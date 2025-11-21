@@ -82,7 +82,7 @@
 - **Containerization**: Docker + Docker Compose
 - **Orchestration**: Kubernetes (minikube for local, cloud for prod)
 - **CI/CD**: GitHub Actions
-- **Cloud**: (TBD - AWS EKS, GCP GKE, or DigitalOcean Kubernetes)
+- **Cloud**: AWS EKS
 
 ---
 
@@ -185,6 +185,12 @@ InventoryManagement/
 │   │   │   ├── forecast_engine.py  # Forecasting logic
 │   │   │   ├── recommendation.py   # Reorder calculations
 │   │   │   └── csv_processor.py    # CSV parsing
+│   │   │
+│   │   ├── static/                 # Static assets served by FastAPI
+│   │   │   └── templates/          # CSV templates returned as downloads
+│   │   │       ├── products.csv
+│   │   │       ├── inventory.csv
+│   │   │       └── sales.csv
 │   │   │
 │   │   ├── database/               # Database setup
 │   │   │   ├── __init__.py
@@ -296,6 +302,9 @@ DashboardLayout (/dashboard)
         │   ├── Drag & Drop Zone
         │   ├── File Selection
         │   └── Upload Button
+        ├── Template Downloads
+        │   ├── Buttons per data type (Products/Inventory/Sales)
+        │   └── Triggers GET /api/templates/{type} to fetch CSV attachment
         ├── Data Preview Table
         │   ├── Column Mapping
         │   └── Sample Rows
@@ -462,6 +471,11 @@ CREATE TABLE recommendations (
   - Body: CSV file upload
   - Returns: { imported: 1250, errors: [] }
 
+### **Templates**
+- `GET /api/templates/{type}` → CSV template download
+  - Path params: `type` ∈ {products, inventory, sales}
+  - Returns: CSV attachment with headers for the selected import type
+
 ### **Forecasts**
 - `GET /api/forecasts` → List[Forecast]
 - `POST /api/forecasts/run` → { status: "success", products_forecasted: 150 }
@@ -525,6 +539,7 @@ Dashboard specific:
   - Basic chart (In/Least toggle)
 ✅ Product detail view/modal with recommendation breakdown
 ✅ CSV import page (UI only, mock backend initially)
+✅ Template downloads for Products/Inventory/Sales CSV imports
 ✅ Docker setup (frontend + backend + postgres)
 ✅ Basic Kubernetes manifests
 ✅ Responsive design (mobile-friendly)
