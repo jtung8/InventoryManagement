@@ -80,8 +80,9 @@
 
 ### **DevOps/Infrastructure**
 - **Containerization**: Docker + Docker Compose
-- **Orchestration**: Kubernetes (minikube for local, cloud for prod)
-- **CI/CD**: GitHub Actions
+- **Orchestration**: Kubernetes (minikube for local, AWS EKS for cloud)
+- **CI**: GitHub Actions
+- **CD/GitOps**: Argo CD syncing manifests to EKS
 - **Cloud**: AWS EKS
 
 ---
@@ -541,15 +542,17 @@ Dashboard specific:
 ✅ CSV import page (UI only, mock backend initially)
 ✅ Template downloads for Products/Inventory/Sales CSV imports
 ✅ Docker setup (frontend + backend + postgres)
-✅ Basic Kubernetes manifests
+✅ Basic Kubernetes manifests deployed to AWS EKS
+✅ GitHub Actions CI pipeline (build/lint/test) on main
+✅ Argo CD GitOps syncing to EKS (single env/staging is fine)
 ✅ Responsive design (mobile-friendly)
 
 ### **Nice to Have (If time permits)**
 ⭕ Full CRUD for products
 ⭕ Real forecasting logic (vs mock data)
 ⭕ User authentication
-⭕ GitHub Actions CI/CD
-⭕ Deploy to cloud K8s cluster
+⭕ Autoscaling/monitoring on EKS (HPA + metrics)
+⭕ Purchase order generation
 
 ### **Post-MVP (Week 2+)**
 - Advanced forecasting (ML models)
@@ -623,8 +626,10 @@ By end of Week 1, you should have:
 4. ✅ Recommendation breakdown view
 5. ✅ Docker Compose running locally (all 3 services)
 6. ✅ Basic K8s manifests ready (doesn't have to be deployed yet)
-7. ✅ Codebase on GitHub with clean commit history
-8. ✅ README with setup instructions
+7. ✅ GitHub Actions CI pipeline green on main
+8. ✅ Argo CD syncing manifests to AWS EKS (single env/staging is fine)
+9. ✅ Codebase on GitHub with clean commit history
+10. ✅ README with setup instructions
 
 This should be enough for:
 - **Resume bullet**: "Built full-stack inventory management SaaS with Next.js, FastAPI, PostgreSQL, deployed with Docker and Kubernetes"
