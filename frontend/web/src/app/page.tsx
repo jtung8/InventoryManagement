@@ -4,7 +4,7 @@ type NavItem = {
   label: string;
   href: string;
 };
-
+// Trigger CI smoke run
 const navItems: NavItem[] = [
   { label: "Product", href: "#product" },
   { label: "Pricing", href: "#pricing" },
