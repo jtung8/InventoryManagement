@@ -4,60 +4,83 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         USER BROWSER                             │
+│                         USER BROWSER                            │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              │ HTTPS
                              │
-┌────────────────────────────▼────────────────────────────────────┐
+┌────────────────────────────▼────────────────────────────────────-┐
 │                      FRONTEND LAYER                              │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ Next.js 15 App (TypeScript + React)                      │   │
-│  │  - Landing Page (Marketing site)                         │   │
-│  │  - Dashboard (Authenticated app)                         │   │
-│  │  - Component Library (Shadcn/ui + Tailwind)              │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │ Next.js 15 App (TypeScript + React)                      │    │
+│  │  - Landing Page (Marketing site)                         │    │
+│  │  - Dashboard (Authenticated app)                         │    │
+│  │  - Component Library (Shadcn/ui + Tailwind)              │    │
+│  └──────────────────────────────────────────────────────────┘    │
 │                              │                                   │
 │                              │ REST API (fetch/axios)            │
 └──────────────────────────────┼───────────────────────────────────┘
                                │
 ┌──────────────────────────────▼───────────────────────────────────┐
 │                      BACKEND LAYER                               │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ FastAPI (Python 3.11+)                                   │   │
-│  │  - REST API endpoints                                    │   │
-│  │  - Business logic & forecasting engine                   │   │
-│  │  - CSV import processing                                 │   │
-│  │  - Authentication (JWT)                                  │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │ FastAPI (Python 3.11+)                                   │    │
+│  │  - REST API endpoints                                    │    │
+│  │  - Business logic & forecasting engine                   │    │
+│  │  - CSV import processing                                 │    │
+│  │  - Authentication (JWT)                                  │    │
+│  └──────────────────────────────────────────────────────────┘    │
 │                              │                                   │
 │                              │ SQLAlchemy ORM                    │
 └──────────────────────────────┼───────────────────────────────────┘
                                │
 ┌──────────────────────────────▼───────────────────────────────────┐
 │                      DATABASE LAYER                              │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ PostgreSQL 15                                            │   │
-│  │  - Products table                                        │   │
-│  │  - Inventory levels table                                │   │
-│  │  - Sales history table                                   │   │
-│  │  - Forecasts table                                       │   │
-│  │  - Recommendations table                                 │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │ PostgreSQL 15                                            │    │
+│  │  - Products table                                        │    │
+│  │  - Inventory levels table                                │    │
+│  │  - Sales history table                                   │    │
+│  │  - Forecasts table                                       │    │
+│  │  - Recommendations table                                 │    │
+│  └──────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────┐
 │                   INFRASTRUCTURE LAYER                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   Docker     │  │  Kubernetes  │  │ GitHub       │           │
-│  │  Containers  │  │  Cluster     │  │ Actions CI/CD│           │
-│  └──────────────┘  └──────────────┘  └──────────────┘           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
+│  │   Docker     │  │  Kubernetes  │  │ GitHub       │            │
+│  │  Containers  │  │  Cluster     │  │ Actions CI/CD│            │
+│  └──────────────┘  └──────────────┘  └──────────────┘            │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Technology Stack Deep Dive
+-## 2. Technology Stack Deep Dive
+
+### **2.1 1% Better (Low-Risk) Architecture Tweaks**
+These changes keep the MVP simple, but make the codebase easier to scale, test, and explain in interviews.
+
+**Frontend (Next.js)**
+- **Typed API boundary**: generate TypeScript types from FastAPI’s OpenAPI so your UI and API stay in sync.
+  - MVP move: use `openapi-typescript` to generate `src/lib/api-types.ts`.
+- **Data fetching pattern**: standardize on a single approach (either `fetch` wrappers or React Query) so loading/error states are consistent.
+  - MVP move: a tiny `src/lib/api.ts` wrapper that returns `{ data, error }`.
+- **Route groups without conflicts**: use `(marketing)` and `(dashboard)` for layout separation, but keep only **one** root `/` page.
+
+**Backend (FastAPI)**
+- **Health endpoints**: add `/healthz` and `/readyz` for local + Kubernetes readiness/liveness.
+- **Versioned API**: prefix endpoints with `/api/v1/...` to avoid breaking the frontend later.
+- **Forecast engine as a plug-in**: keep a simple baseline (moving average) but design an interface so you can swap models later.
+
+**Database (Postgres)**
+- **Add a `locations` concept early** (even if MVP defaults to one location). Retail inventory gets 10x easier to extend.
+- **Index the hot paths**: `(sku)`, `(product_id, sale_date)` and `(product_id)` for the tables you query the most.
+
+**DevOps**
+- **Single source of dev commands**: add a short `README` section (or Make targets later) like `dev`, `test`, `lint`.
+- **Container health checks** in Docker/K8s (backend health endpoints make this easy).
 
 ### **Frontend Stack**
 - **Framework**: Next.js 15 (App Router)
@@ -92,137 +115,67 @@
 ```
 InventoryManagement/
 │
-├── frontend/                       # Next.js application
-│   ├── app/                        # Next.js 15 app directory
-│   │   ├── (marketing)/            # Landing page group
-│   │   │   ├── page.tsx            # Home/landing page
-│   │   │   ├── pricing/page.tsx    # Pricing page
-│   │   │   └── layout.tsx          # Marketing layout
-│   │   │
-│   │   ├── (dashboard)/            # Dashboard group (authenticated)
-│   │   │   ├── dashboard/
-│   │   │   │   └── page.tsx        # Main dashboard
-│   │   │   ├── products/
-│   │   │   │   ├── page.tsx        # Products list
-│   │   │   │   └── [id]/page.tsx   # Product detail
-│   │   │   ├── forecasts/
-│   │   │   │   └── page.tsx        # Forecasts view
-│   │   │   ├── imports/
-│   │   │   │   └── page.tsx        # CSV import page
-│   │   │   └── layout.tsx          # Dashboard layout
-│   │   │
-│   │   ├── api/                    # API routes (optional proxy)
-│   │   ├── layout.tsx              # Root layout
-│   │   └── globals.css             # Global styles
-│   │
-│   ├── components/                 # React components
-│   │   ├── landing/                # Landing page components
-│   │   │   ├── Hero.tsx
-│   │   │   ├── Features.tsx
-│   │   │   ├── CTA.tsx
-│   │   │   └── Navbar.tsx
-│   │   │
-│   │   ├── dashboard/              # Dashboard components
-│   │   │   ├── MetricCard.tsx
-│   │   │   ├── AtRiskTable.tsx
-│   │   │   ├── OrderQtyChart.tsx
-│   │   │   ├── RecommendationCard.tsx
-│   │   │   └── Sidebar.tsx
-│   │   │
-│   │   ├── imports/                # Import flow components
-│   │   │   ├── CSVUploader.tsx
-│   │   │   ├── DataPreview.tsx
-│   │   │   └── ImportProgress.tsx
-│   │   │
-│   │   └── ui/                     # Shadcn/ui components
-│   │       ├── button.tsx
-│   │       ├── card.tsx
-│   │       ├── table.tsx
-│   │       ├── dialog.tsx
-│   │       └── ...
-│   │
-│   ├── lib/                        # Utilities
-│   │   ├── api.ts                  # API client
-│   │   ├── utils.ts                # Helper functions
-│   │   └── types.ts                # TypeScript types
-│   │
-│   ├── public/                     # Static assets
-│   ├── tailwind.config.ts          # Tailwind configuration
-│   ├── next.config.js              # Next.js config
-│   ├── tsconfig.json               # TypeScript config
-│   ├── package.json
-│   └── Dockerfile                  # Frontend Docker image
+├── frontend/
+│   └── web/                       # Next.js application (App Router)
+│       ├── src/
+│       │   ├── app/
+│       │   │   ├── page.tsx        # Landing page at `/`
+│       │   │   ├── (marketing)/    # Marketing route group (layout-only)
+│       │   │   │   ├── layout.tsx  # Marketing layout (optional)
+│       │   │   │   └── pricing/page.tsx
+│       │   │   ├── (dashboard)/    # Dashboard route group (authenticated later)
+│       │   │   │   ├── dashboard/page.tsx
+│       │   │   │   ├── products/page.tsx
+│       │   │   │   ├── products/[id]/page.tsx
+│       │   │   │   ├── forecasts/page.tsx
+│       │   │   │   ├── imports/page.tsx
+│       │   │   │   └── layout.tsx
+│       │   │   ├── layout.tsx      # Root layout
+│       │   │   └── globals.css
+│       │   ├── components/
+│       │   │   ├── landing/
+│       │   │   │   ├── Hero.tsx
+│       │   │   │   ├── Features.tsx
+│       │   │   │   ├── CTA.tsx
+│       │   │   │   ├── Navbar.tsx
+│       │   │   │   └── Footer.tsx
+│       │   │   └── dashboard/
+│       │   │       ├── MetricCard.tsx
+│       │   │       ├── AtRiskTable.tsx
+│       │   │       ├── OrderQtyChart.tsx
+│       │   │       ├── RecommendationCard.tsx
+│       │   │       └── Sidebar.tsx
+│       │   └── lib/
+│       │       ├── api.ts          # API client (fetch wrapper)
+│       │       ├── types.ts        # TypeScript types
+│       │       └── utils.ts
+│       ├── public/
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── next.config.ts
+│       ├── tailwind.config.ts
+│       └── Dockerfile
 │
 ├── backend/                        # FastAPI application
 │   ├── app/
-│   │   ├── main.py                 # FastAPI app entry
-│   │   ├── config.py               # Configuration
-│   │   │
-│   │   ├── api/                    # API endpoints
-│   │   │   ├── __init__.py
-│   │   │   ├── dashboard.py        # Dashboard endpoints
-│   │   │   ├── products.py         # Products CRUD
-│   │   │   ├── inventory.py        # Inventory endpoints
-│   │   │   ├── sales.py            # Sales import
-│   │   │   ├── forecasts.py        # Forecasting endpoints
-│   │   │   └── recommendations.py  # Recommendations
-│   │   │
-│   │   ├── models/                 # SQLAlchemy models
-│   │   │   ├── __init__.py
-│   │   │   ├── product.py
-│   │   │   ├── inventory.py
-│   │   │   ├── sales.py
-│   │   │   ├── forecast.py
-│   │   │   └── recommendation.py
-│   │   │
-│   │   ├── schemas/                # Pydantic schemas
-│   │   │   ├── __init__.py
-│   │   │   ├── product.py
-│   │   │   ├── dashboard.py
-│   │   │   └── ...
-│   │   │
-│   │   ├── services/               # Business logic
-│   │   │   ├── __init__.py
-│   │   │   ├── forecast_engine.py  # Forecasting logic
-│   │   │   ├── recommendation.py   # Reorder calculations
-│   │   │   └── csv_processor.py    # CSV parsing
-│   │   │
-│   │   ├── static/                 # Static assets served by FastAPI
-│   │   │   └── templates/          # CSV templates returned as downloads
-│   │   │       ├── products.csv
-│   │   │       ├── inventory.csv
-│   │   │       └── sales.csv
-│   │   │
-│   │   ├── database/               # Database setup
-│   │   │   ├── __init__.py
-│   │   │   ├── session.py          # DB session
-│   │   │   └── base.py             # Base model
-│   │   │
-│   │   └── utils/                  # Utilities
-│   │       └── __init__.py
-│   │
-│   ├── alembic/                    # Database migrations
-│   ├── tests/                      # Backend tests
-│   ├── requirements.txt            # Python dependencies
-│   ├── Dockerfile                  # Backend Docker image
-│   └── .env.example                # Environment variables
+│   │   ├── main.py
+│   │   ├── config.py
+│   │   ├── api/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── services/
+│   │   └── database/
+│   ├── alembic/
+│   ├── tests/
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── .env.example
 │
-├── kubernetes/                     # K8s manifests
-│   ├── frontend-deployment.yaml
-│   ├── backend-deployment.yaml
-│   ├── postgres-deployment.yaml
-│   ├── ingress.yaml
-│   └── configmap.yaml
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yaml                 # CI pipeline
-│       └── cd.yaml                 # CD pipeline
-│
-├── docker-compose.yml              # Local dev environment
-├── ARCHITECTURE.md                 # This file
-├── CLAUDE.md                       # AI assistant context
-└── README.md                       # Project readme
+├── kubernetes/
+├── .github/workflows/
+├── docker-compose.yml
+├── ARCHITECTURE.md
+└── README.md
 ```
 
 ---
@@ -570,7 +523,7 @@ Dashboard specific:
 version: '3.8'
 services:
   frontend:
-    build: ./frontend
+    build: ./frontend/web
     ports:
       - "3000:3000"
     environment:
