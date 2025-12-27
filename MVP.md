@@ -291,3 +291,19 @@ When done, prepare:
   - RDS instance (no credentials shown)
 - link to GitHub repo + live URL
 - a short architecture diagram (ARCHITECTURE.md already has it)
+
+---
+
+## 10) Success Metrics for MVP
+
+By end of Week 1, you should have:
+- ✅ Landing page live (looks professional, ResuMax-inspired design)
+- ✅ Dashboard functional with mock data
+- ✅ CSV upload UI working (backend can be mocked)
+- ✅ Recommendation breakdown view
+- ✅ Docker Compose running locally (all 3 services)
+- ✅ Basic K8s manifests ready (doesn't have to be deployed yet)
+- ✅ GitHub Actions CI pipeline green on main
+- ✅ Argo CD syncing manifests to AWS EKS (single env/staging is fine)
+- ✅ Codebase on GitHub with clean commit history
+- ✅ README with setup instructions
