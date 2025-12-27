@@ -13,15 +13,16 @@ const navItems: NavItem[] = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <Navbar brand="InventoryPilot" navItems={navItems} ctaLabel="Sign In" ctaHref="#" />
 
       <main className="mx-auto max-w-6xl px-6 py-16">
         <h1 className="text-3xl font-bold tracking-tight">
           Landing page scaffold
         </h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
-          Next small step: add <code className="rounded bg-slate-100 px-1">Hero</code> beneath the navbar.
+        <p className="mt-3 max-w-2xl text-[var(--text-muted)]">
+          Next small step: add{" "}
+          <code className="rounded bg-[var(--surface-2)] px-1">Hero</code> beneath the navbar.
         </p>
       </main>
     </div>
