@@ -1,596 +1,562 @@
-# InventoryPilot - System Architecture & Implementation Plan
+# InventoryPilot - Project Reference
 
-## 1. High-Level System Architecture
+> **Purpose**: This file serves as the single source of truth for Claude Code when working on this project. It contains architecture decisions, coding standards, and workflow guidelines.
+
+---
+
+## Claude Code Guidelines
+
+### Working Style
+
+1. **One file at a time**: Complete work on a single file before moving to the next. This keeps changes atomic and easier to review.
+
+2. **Plan before coding**: When asked to implement a feature, first explain:
+   - What files will be created/modified
+   - Why each change is needed
+   - The order of operations
+   - Any dependencies or prerequisites
+
+3. **Explain as you go**: Since the user is new to coding, provide clear explanations of:
+   - What each code block does
+   - Why certain patterns are used
+   - How pieces connect together
+
+4. **Small, testable increments**: Break large features into smaller pieces that can be tested independently.
+
+5. **Follow the Build Order**: Always check Section 3 (Build Order) before starting work. Don't skip ahead.
+
+6. **Reference this file**: Before making architectural decisions, check this document for established patterns and conventions.
+
+### Code Quality Standards
+
+```
+DO:
+- Use TypeScript strict mode (frontend)
+- Use Python type hints (backend)
+- Write descriptive variable/function names
+- Add comments for complex logic
+- Follow existing patterns in the codebase
+
+DON'T:
+- Create files without explaining their purpose
+- Make multiple unrelated changes at once
+- Skip error handling
+- Use any/unknown types without justification
+- Add features not in the current tier
+```
+
+---
+
+## 1. Scope Guardrails
+
+**These are explicitly OUT OF SCOPE for MVP:**
+
+| Excluded | Reason |
+|----------|--------|
+| User authentication | Adds complexity, not needed for demo |
+| Multi-tenant support | Single-user MVP is fine |
+| Advanced ML forecasting | Simple moving average is sufficient |
+| CSV AI column mapping | Deferred to post-MVP |
+| Database migrations in production | Seed data is fine for demo |
+| Purchase order generation | Nice-to-have, not core |
+
+**AI Chat Constraints:**
+- AI chat is a **query router + formatter only**
+- It classifies user intent into 3-4 fixed categories
+- It calls existing API endpoints (never queries DB directly)
+- No "agent brain" or free-form database access
+
+**If you're tempted to add something not listed in the current tier, don't.**
+
+---
+
+## 2. System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         USER BROWSER                            │
 └────────────────────────────┬────────────────────────────────────┘
-                             │
                              │ HTTPS
-                             │
-┌────────────────────────────▼────────────────────────────────────-┐
-│                      FRONTEND LAYER                              │
-│  ┌──────────────────────────────────────────────────────────┐    │
-│  │ Next.js 15 App (TypeScript + React)                      │    │
-│  │  - Landing Page (Marketing site)                         │    │
-│  │  - Dashboard (Authenticated app)                         │    │
-│  │  - Component Library (Shadcn/ui + Tailwind)              │    │
-│  └──────────────────────────────────────────────────────────┘    │
-│                              │                                   │
-│                              │ REST API (fetch/axios)            │
-└──────────────────────────────┼───────────────────────────────────┘
-                               │
-┌──────────────────────────────▼───────────────────────────────────┐
-│                      BACKEND LAYER                               │
-│  ┌──────────────────────────────────────────────────────────┐    │
-│  │ FastAPI (Python 3.11+)                                   │    │
-│  │  - REST API endpoints                                    │    │
-│  │  - Business logic & forecasting engine                   │    │
-│  │  - CSV import processing                                 │    │
-│  │  - Authentication (JWT)                                  │    │
-│  └──────────────────────────────────────────────────────────┘    │
-│                              │                                   │
-│                              │ SQLAlchemy ORM                    │
-└──────────────────────────────┼───────────────────────────────────┘
-                               │
-┌──────────────────────────────▼───────────────────────────────────┐
-│                      DATABASE LAYER                              │
-│  ┌──────────────────────────────────────────────────────────┐    │
-│  │ PostgreSQL 15                                            │    │
-│  │  - Products table                                        │    │
-│  │  - Inventory levels table                                │    │
-│  │  - Sales history table                                   │    │
-│  │  - Forecasts table                                       │    │
-│  │  - Recommendations table                                 │    │
-│  └──────────────────────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────────────────────┘
+┌────────────────────────────▼────────────────────────────────────┐
+│  FRONTEND: Next.js 16 (App Router, TypeScript)                  │
+│  - Landing page, Dashboard, AI Chat Assistant                   │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ REST API
+┌────────────────────────────▼────────────────────────────────────┐
+│  BACKEND: FastAPI (Python 3.11+)                                │
+│  - REST endpoints, Forecasting, AI chat, Prometheus metrics     │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ SQLAlchemy
+┌────────────────────────────▼────────────────────────────────────┐
+│  DATABASE                                                       │
+│  - Local: PostgreSQL via Docker Compose                         │
+│  - EKS: AWS RDS PostgreSQL                                      │
+└─────────────────────────────────────────────────────────────────┘
 
-┌──────────────────────────────────────────────────────────────────┐
-│                   INFRASTRUCTURE LAYER                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
-│  │   Docker     │  │  Kubernetes  │  │ GitHub       │            │
-│  │  Containers  │  │  Cluster     │  │ Actions CI/CD│            │
-│  └──────────────┘  └──────────────┘  └──────────────┘            │
-└──────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  OBSERVABILITY: Prometheus + Grafana (kube-prometheus-stack)    │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  INFRASTRUCTURE: Docker → GitHub Actions → ECR → Argo CD → EKS  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
--## 2. Technology Stack Deep Dive
+## 3. Build Order
 
-### **2.1 1% Better (Low-Risk) Architecture Tweaks**
-These changes keep the MVP simple, but make the codebase easier to scale, test, and explain in interviews.
+**Follow this sequence. Always have something demoable before moving to the next step.**
 
-**Frontend (Next.js)**
-- **Typed API boundary**: generate TypeScript types from FastAPI’s OpenAPI so your UI and API stay in sync.
-  - MVP move: use `openapi-typescript` to generate `src/lib/api-types.ts`.
-- **Data fetching pattern**: standardize on a single approach (either `fetch` wrappers or React Query) so loading/error states are consistent.
-  - MVP move: a tiny `src/lib/api.ts` wrapper that returns `{ data, error }`.
-- **Route groups without conflicts**: use `(marketing)` and `(dashboard)` for layout separation, but keep only **one** root `/` page.
+```
+Step 1: UI Flows + Mock Data
+    └── Landing page, Dashboard, Imports page (all with mock/static data)
+    └── Demo: "Here's what the product looks like"
 
-**Backend (FastAPI)**
-- **Health endpoints**: add `/healthz` and `/readyz` for local + Kubernetes readiness/liveness.
-- **Versioned API**: prefix endpoints with `/api/v1/...` to avoid breaking the frontend later.
-- **Forecast engine as a plug-in**: keep a simple baseline (moving average) but design an interface so you can swap models later.
+Step 2: Minimal FastAPI Backend
+    └── /healthz, /readyz, /api/v1/dashboard/summary, /api/v1/recommendations
+    └── Hard-coded/seed data is fine
+    └── Demo: "Frontend talks to real API"
 
-**Database (Postgres)**
-- **Add a `locations` concept early** (even if MVP defaults to one location). Retail inventory gets 10x easier to extend.
-- **Index the hot paths**: `(sku)`, `(product_id, sale_date)` and `(product_id)` for the tables you query the most.
+Step 3: Docker Compose Local
+    └── frontend + backend + postgres containers
+    └── Demo: "Runs anywhere with docker-compose up"
 
-**DevOps**
-- **Single source of dev commands**: add a short `README` section (or Make targets later) like `dev`, `test`, `lint`.
-- **Container health checks** in Docker/K8s (backend health endpoints make this easy).
+Step 4: GitHub Actions CI
+    └── Lint, type-check, build for both frontend and backend
+    └── Demo: "Every push is validated"
 
-### **Frontend Stack**
-- **Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS + Shadcn/ui components
-- **State Management**: React Context + hooks (zustand for complex state later)
-- **Charts**: Recharts or Chart.js
-- **HTTP Client**: fetch API (native) or axios
+Step 5: ECR + EKS Deploy
+    └── Push images to ECR, deploy to EKS
+    └── GitHub Actions uses OIDC → AWS IAM role (no long-lived keys)
+    └── Demo: "App runs on Kubernetes"
 
-### **Backend Stack**
-- **Framework**: FastAPI (Python 3.11+)
-- **ORM**: SQLAlchemy 2.0 / SQLModel
-- **Validation**: Pydantic v2
-- **Auth**: JWT tokens (python-jose)
-- **CORS**: FastAPI CORS middleware
+Step 6: Argo CD GitOps
+    └── Argo CD syncs from kubernetes/ directory
+    └── GitHub Actions updates image tags in kubernetes/overlays/staging/
+    └── Demo: "Git push triggers automatic deployment"
 
-### **Database**
-- **Primary DB**: PostgreSQL 15
-- **Migration Tool**: Alembic
+Step 7: Prometheus + Grafana
+    └── Install kube-prometheus-stack via Helm
+    └── Backend /metrics endpoint
+    └── Demo: "Here's my observability dashboard"
 
-### **DevOps/Infrastructure**
-- **Containerization**: Docker + Docker Compose
-- **Orchestration**: Kubernetes (minikube for local, AWS EKS for cloud)
-- **CI**: GitHub Actions
-- **CD/GitOps**: Argo CD syncing manifests to EKS
-- **Cloud**: AWS EKS
+Step 8: AI Chat
+    └── Chat widget + /api/v1/ai/chat endpoint
+    └── 3-4 fixed intents only
+    └── Demo: "Ask questions in natural language"
+```
 
 ---
 
-## 3. Project Directory Structure
+## 4. Technology Stack
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Frontend | Next.js 16, TypeScript, Tailwind, Shadcn/ui | User interface |
+| Backend | FastAPI, Python 3.11+, Pydantic v2 | API & business logic |
+| Database (Local) | PostgreSQL 15 via Docker | Local development |
+| Database (EKS) | AWS RDS PostgreSQL | Production data |
+| AI | Claude API (Anthropic SDK) | Chat assistant (fixed intents) |
+| Observability | Prometheus, Grafana (kube-prometheus-stack) | Metrics & dashboards |
+| Containers | Docker, Docker Compose | Local dev & packaging |
+| CI | GitHub Actions | Build, test, lint |
+| CD/GitOps | Argo CD | Automated deployments |
+| Cloud | AWS EKS, ECR, RDS | Production infrastructure |
+
+---
+
+## 5. Core Features (Tiered)
+
+### Tier 1 — Product MVP (ship first)
+
+| Feature | Description | Done When |
+|---------|-------------|-----------|
+| Landing Page | Hero, features, CTA sections | Looks polished, responsive |
+| Dashboard | Metrics cards, at-risk table, charts | Shows mock data, filter/search works |
+| Imports Page | CSV template download + file preview | Can upload CSV and see preview table |
+| Basic API | `/healthz`, `/readyz`, `/api/v1/dashboard/summary`, `/api/v1/recommendations` | Frontend displays real API data |
+| Docker Compose | frontend + backend + postgres | `docker-compose up` works |
+| GitHub Actions CI | Lint + build for frontend and backend | Green checks on every PR |
+
+### Tier 2 — DevOps MVP (ship second)
+
+| Feature | Description | Done When |
+|---------|-------------|-----------|
+| ECR Push | Frontend + backend images to ECR | Images tagged with commit SHA |
+| EKS Deploy | Deployments + Services running | App accessible via LoadBalancer/Ingress |
+| Argo CD Sync | GitOps from kubernetes/ directory | Changing manifests triggers redeploy |
+| RDS PostgreSQL | Production database | Backend connects to RDS on EKS |
+| Prometheus + Grafana | kube-prometheus-stack Helm chart | Dashboard shows request rate, error rate, p95 latency |
+| /metrics Endpoint | Prometheus scraping backend | Metrics visible in Grafana |
+
+### Tier 3 — AI MVP (ship last)
+
+| Feature | Description | Done When |
+|---------|-------------|-----------|
+| Chat Widget | Floating UI component | Opens/closes, shows messages |
+| /api/v1/ai/chat | Intent classification + response | Returns formatted answers |
+| Fixed Intents | 3-4 supported query types | All intents work correctly |
+
+---
+
+## 6. API Design
+
+### Base URL
+```
+/api/v1/...
+```
+
+### Health & Metrics (Tier 1)
+```
+GET  /healthz              → { "status": "healthy" }
+GET  /readyz               → { "status": "ready", "database": "connected" }
+GET  /metrics              → Prometheus format (Tier 2)
+```
+
+### Dashboard (Tier 1)
+```
+GET  /api/v1/dashboard/summary    → Dashboard metrics + at-risk products list
+```
+
+### Recommendations (Tier 1)
+```
+GET  /api/v1/recommendations              → List all recommendations
+GET  /api/v1/recommendations/{product_id} → Single recommendation detail
+```
+
+### Products (Tier 1, minimal)
+```
+GET  /api/v1/products                     → List products (with ?sort=, ?limit=)
+GET  /api/v1/products/{id}                → Single product
+```
+
+### Imports (Tier 1, simplified)
+```
+GET  /api/v1/templates/{type}             → Download CSV template (products|inventory|sales)
+POST /api/v1/imports/upload               → Upload CSV, returns preview (no AI mapping)
+```
+
+### AI Chat (Tier 3)
+```
+POST /api/v1/ai/chat                      → { "message": "..." } → { "response": "..." }
+```
+
+**Endpoints NOT in MVP:**
+- ~~POST /api/v1/imports/map-columns~~ (AI mapping deferred)
+- ~~POST /api/v1/imports/process~~ (full import pipeline deferred)
+- ~~POST/PUT/DELETE for products~~ (read-only MVP)
+
+---
+
+## 7. Data Models
+
+### Database Tables
+
+```sql
+products
+├── id (UUID, PK)
+├── sku (VARCHAR, UNIQUE)
+├── name (VARCHAR)
+├── category (VARCHAR)
+├── lead_time_days (INTEGER)
+├── unit_cost (DECIMAL)
+└── created_at (TIMESTAMP)
+
+inventory_levels
+├── id (UUID, PK)
+├── product_id (UUID, FK)
+├── on_hand (INTEGER)
+├── allocated (INTEGER)
+├── available (GENERATED)
+└── last_updated (TIMESTAMP)
+
+sales_history
+├── id (UUID, PK)
+├── product_id (UUID, FK)
+├── sale_date (DATE)
+├── quantity_sold (INTEGER)
+└── created_at (TIMESTAMP)
+
+recommendations
+├── id (UUID, PK)
+├── product_id (UUID, FK)
+├── avg_weekly_demand (DECIMAL)
+├── lead_time_demand (DECIMAL)
+├── safety_stock (DECIMAL)
+├── reorder_point (DECIMAL)
+├── recommended_order_qty (INTEGER)
+├── days_left (DECIMAL)
+├── explanation (JSONB)
+└── created_at (TIMESTAMP)
+```
+
+### Key Indexes
+```sql
+CREATE INDEX idx_products_sku ON products(sku);
+CREATE INDEX idx_sales_product_date ON sales_history(product_id, sale_date);
+CREATE INDEX idx_inventory_product ON inventory_levels(product_id);
+```
+
+---
+
+## 8. DevOps Pipeline
+
+### CI Flow (GitHub Actions)
+```
+Push to any branch
+    ├── Lint (ESLint + Ruff)
+    ├── Type Check (tsc + mypy)
+    └── Build Docker Images
+
+Push to main
+    ├── Build & Push to ECR (tagged with commit SHA)
+    └── Update image tags in kubernetes/overlays/staging/
+```
+
+**Key Decision:** CI uses **GitHub OIDC → AWS IAM role** to push to ECR (no long-lived AWS keys).
+
+### CD Flow (Argo CD)
+```
+Image tag updated in kubernetes/overlays/staging/
+    │
+    └── Argo CD detects change → Syncs to EKS cluster
+```
+
+### Kubernetes Resources (EKS)
+```
+Deployments:
+├── frontend (Next.js)
+└── backend (FastAPI)
+
+Services:
+├── frontend (LoadBalancer or Ingress)
+└── backend (ClusterIP)
+
+Other:
+├── ConfigMaps (env vars)
+├── Secrets (credentials, RDS connection string)
+└── Ingress (routing)
+
+NOT in EKS:
+└── Postgres (using RDS instead)
+```
+
+### Database Strategy
+| Environment | Database |
+|-------------|----------|
+| Local dev | PostgreSQL via docker-compose |
+| EKS staging | AWS RDS PostgreSQL |
+
+---
+
+## 9. Observability
+
+### Done =
+
+- [ ] Prometheus is scraping backend `/metrics`
+- [ ] Grafana dashboard shows:
+  - Request rate (requests/sec)
+  - Error rate (5xx responses)
+  - p95 latency
+- [ ] At least one alert rule exists (e.g., error rate > 5% for 5 minutes)
+
+### Implementation
+```
+kube-prometheus-stack (Helm chart)
+├── Prometheus (scrapes /metrics)
+├── Grafana (dashboards)
+└── Alertmanager (alerts)
+```
+
+---
+
+## 10. AI Chat Specification
+
+### Architecture (Router Pattern)
+```
+User Message
+    │
+    ▼
+Intent Classification (Claude API)
+    │
+    ├── "running_low"     → GET /api/v1/recommendations?at_risk=true
+    ├── "why_at_risk"     → GET /api/v1/recommendations/{product_id}
+    ├── "what_to_order"   → GET /api/v1/recommendations?limit=10
+    └── "top_sellers"     → GET /api/v1/products?sort=sales_velocity&limit=5
+    │
+    ▼
+Format Response (Claude API)
+    │
+    ▼
+Return to User
+```
+
+### Supported Intents (MVP)
+
+| User Says | Intent | API Call |
+|-----------|--------|----------|
+| "What products are running low?" | running_low | GET /recommendations?at_risk=true |
+| "Why is SKU-1234 at risk?" | why_at_risk | GET /recommendations/{id} |
+| "What should I order this week?" | what_to_order | GET /recommendations?limit=10 |
+| "Show me top sellers" | top_sellers | GET /products?sort=sales_velocity&limit=5 |
+
+### Hard Rules
+- AI **never** queries database directly
+- AI **only** calls existing API endpoints
+- AI **only** supports the 4 intents above
+- Unsupported queries get a polite "I can help with X, Y, Z" response
+
+---
+
+## 11. Directory Structure
 
 ```
 InventoryManagement/
-│
-├── frontend/
-│   └── web/                       # Next.js application (App Router)
-│       ├── src/
-│       │   ├── app/
-│       │   │   ├── page.tsx        # Landing page at `/`
-│       │   │   ├── (marketing)/    # Marketing route group (layout-only)
-│       │   │   │   ├── layout.tsx  # Marketing layout (optional)
-│       │   │   │   └── pricing/page.tsx
-│       │   │   ├── (dashboard)/    # Dashboard route group (authenticated later)
-│       │   │   │   ├── dashboard/page.tsx
-│       │   │   │   ├── products/page.tsx
-│       │   │   │   ├── products/[id]/page.tsx
-│       │   │   │   ├── forecasts/page.tsx
-│       │   │   │   ├── imports/page.tsx
-│       │   │   │   └── layout.tsx
-│       │   │   ├── layout.tsx      # Root layout
-│       │   │   └── globals.css
-│       │   ├── components/
-│       │   │   ├── landing/
-│       │   │   │   ├── Hero.tsx
-│       │   │   │   ├── Features.tsx
-│       │   │   │   ├── CTA.tsx
-│       │   │   │   ├── Navbar.tsx
-│       │   │   │   └── Footer.tsx
-│       │   │   └── dashboard/
-│       │   │       ├── MetricCard.tsx
-│       │   │       ├── AtRiskTable.tsx
-│       │   │       ├── OrderQtyChart.tsx
-│       │   │       ├── RecommendationCard.tsx
-│       │   │       └── Sidebar.tsx
-│       │   └── lib/
-│       │       ├── api.ts          # API client (fetch wrapper)
-│       │       ├── types.ts        # TypeScript types
-│       │       └── utils.ts
-│       ├── public/
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── next.config.ts
-│       ├── tailwind.config.ts
-│       └── Dockerfile
-│
-├── backend/                        # FastAPI application
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── api/
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── services/
-│   │   └── database/
-│   ├── alembic/
-│   ├── tests/
-│   ├── requirements.txt
+├── frontend/web/                 # Next.js application
+│   ├── src/
+│   │   ├── app/                  # App Router pages
+│   │   │   ├── page.tsx          # Landing page (/)
+│   │   │   ├── (marketing)/      # Marketing routes
+│   │   │   └── (dashboard)/      # Authenticated routes
+│   │   ├── components/           # React components
+│   │   │   ├── landing/          # Landing page components
+│   │   │   ├── dashboard/        # Dashboard components
+│   │   │   └── ai/               # AI chat components (Tier 3)
+│   │   └── lib/                  # Utilities & API client
 │   ├── Dockerfile
-│   └── .env.example
+│   └── package.json
 │
-├── kubernetes/
-├── .github/workflows/
-├── docker-compose.yml
-├── ARCHITECTURE.md
+├── backend/                      # FastAPI application
+│   ├── app/
+│   │   ├── main.py               # App entrypoint
+│   │   ├── config.py             # Environment config
+│   │   ├── api/v1/               # Versioned API routes
+│   │   ├── models/               # SQLAlchemy models
+│   │   ├── schemas/              # Pydantic schemas
+│   │   ├── services/             # Business logic
+│   │   └── database/             # DB connection & session
+│   ├── alembic/                  # Database migrations
+│   ├── tests/
+│   ├── Dockerfile
+│   └── requirements.txt
+│
+├── kubernetes/                   # K8s manifests for Argo CD
+│   ├── base/                     # Base manifests
+│   └── overlays/                 # Environment-specific
+│       └── staging/              # Staging overrides
+│
+├── observability/                # Local observability config
+│   ├── prometheus/prometheus.yml
+│   └── grafana/dashboards/
+│
+├── .github/workflows/            # CI/CD pipelines
+│   ├── ci.yml                    # Lint, test, build
+│   └── build-push.yml            # Build & push to ECR
+│
+├── docker-compose.yml            # Local development
+├── Makefile                      # Dev commands
 └── README.md
 ```
 
 ---
 
-## 4. Component Hierarchy & Data Flow
+## 12. Design System
 
-### **Landing Page Flow**
+### Colors
 ```
-LandingPage (/)
-├── Navbar
-│   ├── Logo
-│   ├── Navigation Links
-│   └── CTA Button (Sign In / Get Started)
-├── Hero Section
-│   ├── Headline
-│   ├── Subheadline
-│   ├── CTA Buttons
-│   └── Hero Image/Animation
-├── Features Section
-│   ├── Feature Card 1 (Inventory Tracking)
-│   ├── Feature Card 2 (Demand Forecasting)
-│   ├── Feature Card 3 (Smart Recommendations)
-│   └── Feature Card 4 (Easy Imports)
-├── Social Proof
-│   └── Stats/Testimonials
-├── CTA Section
-│   ├── Final pitch
-│   └── Get Started Button
-└── Footer
-    ├── Links
-    └── Copyright
+Primary:    #3B82F6 (Blue - CTAs, links)
+Secondary:  #06B6D4 (Cyan - accents)
+Background: #0A1628 (Dark navy)
+Cards:      #1E293B (Slate)
+Success:    #10B981 (Green)
+Warning:    #F59E0B (Amber)
+Error:      #EF4444 (Red)
+Text:       #F8FAFC (Light)
+Muted:      #94A3B8 (Gray)
 ```
 
-### **Dashboard Flow**
+### Component Patterns
 ```
-DashboardLayout (/dashboard)
-├── Sidebar (persistent)
-│   ├── Logo
-│   ├── Navigation Menu
-│   │   ├── Dashboard (active)
-│   │   ├── Products
-│   │   ├── Forecasts
-│   │   └── Imports
-│   └── User Profile
-│
-└── Main Content Area
-    ├── Dashboard Page
-    │   ├── Header
-    │   │   ├── Page Title
-    │   │   └── User Avatar
-    │   ├── Metrics Row
-    │   │   ├── MetricCard (Total SKUs: 150)
-    │   │   ├── MetricCard (At Risk SKUs)
-    │   │   └── MetricCard (Order Qty: $270)
-    │   ├── At-Risk Products Section
-    │   │   ├── Section Header
-    │   │   └── AtRiskTable
-    │   │       ├── Table Headers (SKU, Name, On-Hand, Days Left, Rec Qty)
-    │   │       └── Table Rows
-    │   │           └── Row Click → Product Detail Modal
-    │   └── Chart Section
-    │       └── OrderQtyChart (In/Least toggle)
-    │
-    ├── Product Detail Modal/Page
-    │   ├── Product Info Card
-    │   ├── Recommendation Breakdown
-    │   │   ├── "Why Recommend X units?"
-    │   │   ├── Average weekly demand
-    │   │   ├── Lead time demand
-    │   │   ├── Safety stock
-    │   │   ├── Reorder point
-    │   │   └── Calculation: 178.6 ~ 80 = 99
-    │   └── Actions
-    │       └── Generate PO / Dismiss
-    │
-    └── Import Page (/dashboard/imports)
-        ├── CSV Upload Component
-        │   ├── Drag & Drop Zone
-        │   ├── File Selection
-        │   └── Upload Button
-        ├── Template Downloads
-        │   ├── Buttons per data type (Products/Inventory/Sales)
-        │   └── Triggers GET /api/templates/{type} to fetch CSV attachment
-        ├── Data Preview Table
-        │   ├── Column Mapping
-        │   └── Sample Rows
-        ├── Import Configuration
-        │   ├── Data Type Selection (Sales/Inventory/Products)
-        │   └── Date Range
-        └── Import Progress
-            ├── Progress Bar
-            └── Success/Error Messages
+- Rounded corners: 8-12px
+- Card padding: p-6
+- Shadows: shadow-lg on cards
+- Borders: Minimal, use #334155 when needed
 ```
 
 ---
 
-## 5. Data Models
+## 13. Development Commands
 
-### **Frontend TypeScript Types**
-```typescript
-// Product
-interface Product {
-  id: string;
-  sku: string;
-  name: string;
-  category: string;
-  lead_time_days: number;
-  unit_cost: number;
-}
+```bash
+# Local development
+make dev              # Start all services (docker-compose up)
+make dev-frontend     # Start only frontend
+make dev-backend      # Start only backend
 
-// Inventory
-interface InventoryLevel {
-  product_id: string;
-  on_hand: number;
-  allocated: number;
-  available: number;
-  last_updated: string;
-}
+# Testing
+make test             # Run all tests
+make lint             # Run all linters
 
-// Sales
-interface SalesRecord {
-  id: string;
-  product_id: string;
-  date: string;
-  quantity_sold: number;
-}
+# Database
+make db-seed          # Seed with sample data
 
-// Forecast
-interface Forecast {
-  product_id: string;
-  forecast_date: string;
-  predicted_demand: number;
-  confidence_interval: [number, number];
-}
-
-// Recommendation
-interface Recommendation {
-  product_id: string;
-  product: Product;
-  inventory: InventoryLevel;
-  avg_weekly_demand: number;
-  lead_time_demand: number;
-  safety_stock: number;
-  reorder_point: number;
-  recommended_order_qty: number;
-  days_left: number;
-  explanation: RecommendationExplanation;
-}
-
-interface RecommendationExplanation {
-  avg_weekly_demand: number;
-  lead_time_demand: number;
-  safety_stock_95: number;
-  reorder_point: number;
-  current_stock: number;
-  calculation: string; // "178.6 ~ 80 = 99"
-}
-
-// Dashboard Summary
-interface DashboardSummary {
-  total_skus: number;
-  at_risk_skus: number;
-  total_order_qty: number;
-  total_order_value: number;
-  at_risk_products: Recommendation[];
-}
-```
-
-### **Backend Database Schema** (simplified)
-```sql
--- products table
-CREATE TABLE products (
-    id UUID PRIMARY KEY,
-    sku VARCHAR(50) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    category VARCHAR(100),
-    lead_time_days INTEGER DEFAULT 7,
-    unit_cost DECIMAL(10,2),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- inventory_levels table
-CREATE TABLE inventory_levels (
-    id UUID PRIMARY KEY,
-    product_id UUID REFERENCES products(id),
-    on_hand INTEGER NOT NULL,
-    allocated INTEGER DEFAULT 0,
-    available INTEGER GENERATED ALWAYS AS (on_hand - allocated) STORED,
-    last_updated TIMESTAMP DEFAULT NOW()
-);
-
--- sales_history table
-CREATE TABLE sales_history (
-    id UUID PRIMARY KEY,
-    product_id UUID REFERENCES products(id),
-    sale_date DATE NOT NULL,
-    quantity_sold INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- forecasts table
-CREATE TABLE forecasts (
-    id UUID PRIMARY KEY,
-    product_id UUID REFERENCES products(id),
-    forecast_date DATE NOT NULL,
-    predicted_demand DECIMAL(10,2),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- recommendations table
-CREATE TABLE recommendations (
-    id UUID PRIMARY KEY,
-    product_id UUID REFERENCES products(id),
-    avg_weekly_demand DECIMAL(10,2),
-    lead_time_demand DECIMAL(10,2),
-    safety_stock DECIMAL(10,2),
-    reorder_point DECIMAL(10,2),
-    recommended_order_qty INTEGER,
-    days_left DECIMAL(5,2),
-    explanation JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+# Docker
+make build            # Build all images
+make push             # Push to ECR
 ```
 
 ---
 
-## 6. API Endpoints Design
+## 14. Environment Variables
 
-### **Dashboard**
-- `GET /api/dashboard/summary` → DashboardSummary
-  - Returns: total SKUs, at-risk count, order qty, at-risk products list
-
-### **Products**
-- `GET /api/products` → List[Product]
-- `GET /api/products/{id}` → Product
-- `POST /api/products` → Product (create)
-- `PUT /api/products/{id}` → Product (update)
-- `DELETE /api/products/{id}` → 204 No Content
-
-### **Inventory**
-- `GET /api/inventory` → List[InventoryLevel]
-- `GET /api/inventory/{product_id}` → InventoryLevel
-- `PUT /api/inventory/{product_id}` → InventoryLevel (update)
-
-### **Sales**
-- `POST /api/sales/import-csv` → ImportResult
-  - Body: CSV file upload
-  - Returns: { imported: 1250, errors: [] }
-
-### **Templates**
-- `GET /api/templates/{type}` → CSV template download
-  - Path params: `type` ∈ {products, inventory, sales}
-  - Returns: CSV attachment with headers for the selected import type
-
-### **Forecasts**
-- `GET /api/forecasts` → List[Forecast]
-- `POST /api/forecasts/run` → { status: "success", products_forecasted: 150 }
-
-### **Recommendations**
-- `GET /api/recommendations` → List[Recommendation]
-- `GET /api/recommendations/{product_id}` → Recommendation
-- `POST /api/recommendations/run` → { status: "success", products_analyzed: 150 }
-
----
-
-## 7. Design System & Color Scheme
-
-Based on ResuMax inspiration (modern, clean, professional with subtle flair):
-
-### **Color Palette**
+### Frontend (.env.local)
 ```
-Primary Colors:
-- Navy/Dark Blue: #0A1628 (main backgrounds)
-- Electric Blue: #3B82F6 (primary CTA, links)
-- Cyan/Aqua: #06B6D4 (accents, charts)
-
-Secondary Colors:
-- Purple: #8B5CF6 (charts, highlights)
-- Yellow/Gold: #F59E0B (warning/at-risk indicators)
-- Green: #10B981 (success states)
-- Red: #EF4444 (critical alerts)
-
-Neutrals:
-- Dark backgrounds: #0F172A, #1E293B, #334155
-- Light text: #F8FAFC, #E2E8F0
-- Muted text: #94A3B8, #64748B
-- Borders: #334155
-
-Dashboard specific:
-- Card backgrounds: #1E293B with subtle gradient
-- Hover states: #334155
-- Chart colors: Blue (#3B82F6) + Purple (#8B5CF6)
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### **Typography**
-- **Headings**: Inter or Geist (modern sans-serif)
-- **Body**: System fonts (Segoe UI, Roboto, etc.)
-- **Monospace** (for SKUs, numbers): JetBrains Mono or Fira Code
-
-### **Component Style Guidelines**
-- **Rounded corners**: 12px for cards, 8px for buttons
-- **Shadows**: Subtle, elevated feel (shadow-xl for cards)
-- **Spacing**: Generous padding (p-6 for cards, p-4 for smaller elements)
-- **Borders**: Minimal, use subtle borders (#334155) or shadows instead
-
----
-
-## 8. MVP Feature Checklist (Week 1 Goal)
-
-### **Must Have (Core MVP)**
-✅ Landing page with hero + features
-✅ Dashboard with:
-  - 3 metric cards (Total SKUs, At Risk, Order Qty)
-  - At-Risk Products table
-  - Basic chart (In/Least toggle)
-✅ Product detail view/modal with recommendation breakdown
-✅ CSV import page (UI only, mock backend initially)
-✅ Template downloads for Products/Inventory/Sales CSV imports
-✅ Docker setup (frontend + backend + postgres)
-✅ Basic Kubernetes manifests deployed to AWS EKS
-✅ GitHub Actions CI pipeline (build/lint/test) on main
-✅ Argo CD GitOps syncing to EKS (single env/staging is fine)
-✅ Responsive design (mobile-friendly)
-
-### **Nice to Have (If time permits)**
-⭕ Full CRUD for products
-⭕ Real forecasting logic (vs mock data)
-⭕ User authentication
-⭕ Autoscaling/monitoring on EKS (HPA + metrics)
-⭕ Purchase order generation
-
-### **Post-MVP (Week 2+)**
-- Advanced forecasting (ML models)
-- Export recommendations to CSV/PDF
-- Purchase order generation
-- Multi-user support
-- Analytics dashboard
-
----
-
-## 9. Docker & Kubernetes Strategy
-
-### **Docker Compose (Local Dev)**
-```yaml
-version: '3.8'
-services:
-  frontend:
-    build: ./frontend/web
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - backend
-
-  backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://user:pass@postgres:5432/inventorypilot
-    depends_on:
-      - postgres
-
-  postgres:
-    image: postgres:15
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=pass
-      - POSTGRES_DB=inventorypilot
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
+### Backend (.env)
+```
+DATABASE_URL=postgresql://user:pass@localhost:5432/inventorypilot
+ANTHROPIC_API_KEY=sk-ant-...
+CORS_ORIGINS=http://localhost:3000
 ```
 
-### **Kubernetes Deployment Highlights**
-- **Frontend**: Deployment + Service (LoadBalancer or Ingress)
-- **Backend**: Deployment + Service (ClusterIP)
-- **PostgreSQL**: StatefulSet + PersistentVolumeClaim
-- **Ingress**: Nginx Ingress Controller for routing
-- **ConfigMaps**: Environment variables
-- **Secrets**: Database credentials, API keys
+---
 
-This gives you:
-- ✅ Docker keywords (multi-stage builds, docker-compose)
-- ✅ Kubernetes keywords (deployments, services, ingress, statefulsets)
-- ✅ DevOps best practices (CI/CD pipeline, containerization)
+## 15. Quick Reference
+
+### Forecasting Formula
+```
+avg_weekly_demand = sum(last_4_weeks_sales) / 4
+lead_time_demand = avg_weekly_demand * (lead_time_days / 7)
+safety_stock = avg_weekly_demand * safety_factor (1.5)
+reorder_point = lead_time_demand + safety_stock
+recommended_qty = reorder_point - current_stock (if positive)
+days_left = current_stock / (avg_weekly_demand / 7)
+```
+
+### Health Check Responses
+```json
+// GET /healthz
+{ "status": "healthy" }
+
+// GET /readyz
+{ "status": "ready", "database": "connected" }
+```
 
 ---
 
-## 10. Success Metrics for MVP
+## 16. File Creation Checklist
 
-By end of Week 1, you should have:
-1. ✅ Landing page live (looks professional, ResuMax-inspired design)
-2. ✅ Dashboard functional with mock data
-3. ✅ CSV upload UI working (backend can be mocked)
-4. ✅ Recommendation breakdown view
-5. ✅ Docker Compose running locally (all 3 services)
-6. ✅ Basic K8s manifests ready (doesn't have to be deployed yet)
-7. ✅ GitHub Actions CI pipeline green on main
-8. ✅ Argo CD syncing manifests to AWS EKS (single env/staging is fine)
-9. ✅ Codebase on GitHub with clean commit history
-10. ✅ README with setup instructions
+When creating a new file, Claude Code should:
 
-This should be enough for:
-- **Resume bullet**: "Built full-stack inventory management SaaS with Next.js, FastAPI, PostgreSQL, deployed with Docker and Kubernetes"
-- **Portfolio piece**: Live demo (even if mock data) + GitHub repo
-- **Interview talking points**: Can discuss architecture, tech choices, K8s setup
-
----
-
-## Next Steps
-
-See `UI_IMPLEMENTATION_PLAN.md` for detailed step-by-step UI building strategy.
+- [ ] Check which Tier this feature belongs to
+- [ ] Verify prerequisites from earlier tiers are complete
+- [ ] Explain what the file does and why it's needed
+- [ ] Show where it fits in the directory structure
+- [ ] Include all necessary imports
+- [ ] Add appropriate type hints/annotations
+- [ ] Include error handling where appropriate
+- [ ] Follow existing patterns from similar files
+- [ ] Note any related files that may need updates
