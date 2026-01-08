@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 // Mock data - will be replaced with API calls in Phase 1
 // Fashion/apparel inventory focused
 const mockAtRiskProducts = [
@@ -86,6 +88,35 @@ const metrics = {
 };
 
 export default function DashboardPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Derive unique categories from data (sorted)
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(mockAtRiskProducts.map((p) => p.category))
+    );
+    unique.sort();
+    return ["all", ...unique];
+  }, []);
+
+  // Filter products based on search + category
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    return mockAtRiskProducts.filter((product) => {
+      const matchesSearch =
+        q.length === 0 ||
+        product.sku.toLowerCase().includes(q) ||
+        product.name.toLowerCase().includes(q);
+
+      const matchesCategory =
+        categoryFilter === "all" || product.category === categoryFilter;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchQuery, categoryFilter]);
+
   return (
     <div className="min-h-screen bg-[#0A1628] text-[#F8FAFC] p-8">
       {/* Page Header */}
@@ -127,12 +158,35 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Filter Controls */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by SKU or name..."
+          className="w-full sm:max-w-md rounded-lg bg-[#1E293B] border border-[#334155] px-4 py-2 text-sm text-[#F8FAFC] placeholder-[#64748B] outline-none focus:border-[#06B6D4] transition-colors"
+        />
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-full sm:w-48 rounded-lg bg-[#1E293B] border border-[#334155] px-4 py-2 text-sm text-[#F8FAFC] outline-none focus:border-[#06B6D4] transition-colors"
+        >
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat === "all" ? "All Categories" : cat}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* At-Risk Products Table */}
       <div className="bg-[#1E293B] rounded-xl p-6 shadow-lg">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">At-Risk Products</h2>
           <span className="text-sm text-[#94A3B8]">
-            {mockAtRiskProducts.length} products need reordering
+            {filteredProducts.length} products match your filters
           </span>
         </div>
 
@@ -151,7 +205,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {mockAtRiskProducts.map((product) => (
+              {filteredProducts.map((product) => (
                 <tr
                   key={product.id}
                   className="border-b border-[#334155] hover:bg-[#334155]/50 transition-colors"
@@ -194,6 +248,13 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Empty state */}
+        {filteredProducts.length === 0 && (
+          <p className="mt-4 text-center text-sm text-[#94A3B8]">
+            No products match your search or filter.
+          </p>
+        )}
       </div>
     </div>
   );
