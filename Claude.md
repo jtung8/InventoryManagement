@@ -42,23 +42,44 @@ DON'T:
 - Make multiple unrelated changes at once
 - Skip error handling
 - Use any/unknown types without justification
-- Add features not in the current tier
+- Add features not in the current phase
 ```
 
 ---
 
 ## 1. Scope Guardrails
 
-**These are explicitly OUT OF SCOPE for MVP:**
+### January MVP (IN SCOPE)
+
+| Feature | Reason |
+|---------|--------|
+| ECS Fargate deployment | Fast to deploy, cost-effective, containerization talking point |
+| SQS + EventBridge async pipeline | DevOps "systems" differentiator |
+| Simple forecasting (moving average) | Pipeline matters more than algorithm |
+| AI chat with router pattern | Makes it an "AI SaaS" |
+| CloudWatch observability | Lean, sufficient for portfolio |
+| GitHub Actions CI/CD | Industry standard |
+
+### January MVP (OUT OF SCOPE)
 
 | Excluded | Reason |
 |----------|--------|
+| EKS + Argo CD | Deferred to February (platform maturity phase) |
+| LightGBM/XGBoost | Use moving average; upgrade later |
+| Prometheus + Grafana | CloudWatch is sufficient |
 | User authentication | Adds complexity, not needed for demo |
 | Multi-tenant support | Single-user MVP is fine |
-| Advanced ML forecasting | Simple moving average is sufficient |
 | CSV AI column mapping | Deferred to post-MVP |
-| Database migrations in production | Seed data is fine for demo |
 | Purchase order generation | Nice-to-have, not core |
+
+### February Upgrades (DEFERRED)
+
+| Feature | Notes |
+|---------|-------|
+| ECS → EKS migration | Platform maturity talking point |
+| Argo CD GitOps | "Git push triggers deploy" demo |
+| LightGBM/XGBoost | ML model upgrade |
+| Prometheus + Grafana | Optional, only if needed |
 
 **AI Chat Constraints:**
 - AI chat is a **query router + formatter only**
@@ -66,11 +87,13 @@ DON'T:
 - It calls existing API endpoints (never queries DB directly)
 - No "agent brain" or free-form database access
 
-**If you're tempted to add something not listed in the current tier, don't.**
+**If you're tempted to add something not listed in the current phase, don't.**
 
 ---
 
 ## 2. System Architecture
+
+### January Architecture (ECS-first)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -80,71 +103,146 @@ DON'T:
 ┌────────────────────────────▼────────────────────────────────────┐
 │  FRONTEND: Next.js 16 (App Router, TypeScript)                  │
 │  - Landing page, Dashboard, AI Chat Assistant                   │
+│  - Hosted on: ECS Fargate (behind ALB)                          │
 └────────────────────────────┬────────────────────────────────────┘
                              │ REST API
 ┌────────────────────────────▼────────────────────────────────────┐
 │  BACKEND: FastAPI (Python 3.11+)                                │
-│  - REST endpoints, Forecasting, AI chat, Prometheus metrics     │
+│  - REST endpoints, Forecasting, AI chat                         │
+│  - Hosted on: ECS Fargate (behind ALB)                          │
 └────────────────────────────┬────────────────────────────────────┘
                              │ SQLAlchemy
 ┌────────────────────────────▼────────────────────────────────────┐
-│  DATABASE                                                       │
+│  DATABASE: AWS RDS PostgreSQL                                   │
 │  - Local: PostgreSQL via Docker Compose                         │
-│  - EKS: AWS RDS PostgreSQL                                      │
+│  - Production: AWS RDS PostgreSQL                               │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  OBSERVABILITY: Prometheus + Grafana (kube-prometheus-stack)    │
+│  ASYNC PIPELINE (Forecasting)                                   │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐          │
+│  │ EventBridge │ -> │    SQS      │ -> │   Worker    │          │
+│  │ (daily)     │    │ (+ DLQ)     │    │ (ECS Task)  │          │
+│  └─────────────┘    └─────────────┘    └─────────────┘          │
+│  - Triggers forecast jobs on schedule                           │
+│  - Worker runs moving average, writes to DB                     │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  INFRASTRUCTURE: Docker → GitHub Actions → ECR → Argo CD → EKS  │
+│  OBSERVABILITY: CloudWatch Logs + Metrics + Alarms              │
+│  - ALB 5xx errors, ECS task restarts, SQS queue age             │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  CI/CD: GitHub Actions → ECR → ECS                              │
+│  - PR: lint/test/build                                          │
+│  - main: build → push ECR → deploy ECS                          │
+│  - Uses OIDC → AWS IAM role (no long-lived keys)                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### February Architecture (EKS + GitOps)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  UPGRADE: ECS → EKS + Argo CD                                   │
+│  - Argo CD syncs from kubernetes/ directory                     │
+│  - GitHub Actions updates image tags                            │
+│  - "Git push triggers automatic deployment"                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Build Order
+## 3. Build Order (January)
 
-**Follow this sequence. Always have something demoable before moving to the next step.**
+**Target: End of January = Live app on AWS + async forecasting + AI chat**
+
+### Phase 0 — Local Demo (Week 1)
 
 ```
 Step 1: UI Flows + Mock Data
-    └── Landing page, Dashboard, Imports page (all with mock/static data)
+    └── Integrate landing page components into page.tsx
+    └── Build Dashboard page (metrics cards, at-risk table, charts)
+    └── Build Imports page (CSV upload UI + preview)
     └── Demo: "Here's what the product looks like"
 
 Step 2: Minimal FastAPI Backend
-    └── /healthz, /readyz, /api/v1/dashboard/summary, /api/v1/recommendations
+    └── /healthz, /readyz
+    └── /api/v1/dashboard/summary, /api/v1/recommendations
     └── Hard-coded/seed data is fine
     └── Demo: "Frontend talks to real API"
 
 Step 3: Docker Compose Local
     └── frontend + backend + postgres containers
     └── Demo: "Runs anywhere with docker-compose up"
+```
 
-Step 4: GitHub Actions CI
-    └── Lint, type-check, build for both frontend and backend
-    └── Demo: "Every push is validated"
+### Phase 1 — Live on AWS (Week 2)
 
-Step 5: ECR + EKS Deploy
-    └── Push images to ECR, deploy to EKS
-    └── GitHub Actions uses OIDC → AWS IAM role (no long-lived keys)
-    └── Demo: "App runs on Kubernetes"
+```
+Step 4: GitHub Actions CI/CD
+    └── PR: Lint (ESLint + Ruff), type-check, build
+    └── main: Build → Push to ECR → Deploy to ECS
+    └── Uses OIDC → AWS IAM role (no long-lived keys)
+    └── Demo: "Every push is validated and deployed"
 
-Step 6: Argo CD GitOps
+Step 5: ECS Fargate + ALB
+    └── Frontend + Backend as ECS services
+    └── Application Load Balancer for routing
+    └── Demo: "App accessible via public URL"
+
+Step 6: RDS PostgreSQL
+    └── Backend connects to RDS
+    └── Seed data loaded
+    └── Demo: "Real database in production"
+
+Step 7: Async Pipeline (SQS + EventBridge)
+    └── SQS queue for forecast jobs (+ DLQ)
+    └── EventBridge rule triggers daily
+    └── Worker task runs moving average forecast
+    └── Demo: "Nightly forecast job runs automatically"
+
+Step 8: CloudWatch Observability
+    └── Logs from ECS tasks
+    └── Alarms: ALB 5xx, ECS restarts, SQS queue age
+    └── Demo: "I can see errors and get alerted"
+```
+
+### Phase 1.5 — AI SaaS (Week 3)
+
+```
+Step 9: AI Chat Widget
+    └── Floating UI component (opens/closes, shows messages)
+    └── Demo: "Chat interface exists"
+
+Step 10: /api/v1/ai/chat Endpoint
+    └── Intent classification (Claude API)
+    └── Router pattern: 4 fixed intents
+    └── Calls existing API endpoints, formats response
+    └── Demo: "Ask questions in natural language"
+
+Step 11: Polish + Demo Prep
+    └── Connect chat to real forecast/recommendation data
+    └── End-to-end flow works
+    └── Demo: "AI explains demand patterns and reorder actions"
+```
+
+### Phase 2 — Platform Maturity (February)
+
+```
+Step 12: EKS Migration
+    └── Move from ECS to EKS
+    └── Demo: "Running on Kubernetes"
+
+Step 13: Argo CD GitOps
     └── Argo CD syncs from kubernetes/ directory
-    └── GitHub Actions updates image tags in kubernetes/overlays/staging/
+    └── GitHub Actions updates image tags
     └── Demo: "Git push triggers automatic deployment"
 
-Step 7: Prometheus + Grafana
-    └── Install kube-prometheus-stack via Helm
-    └── Backend /metrics endpoint
-    └── Demo: "Here's my observability dashboard"
-
-Step 8: AI Chat
-    └── Chat widget + /api/v1/ai/chat endpoint
-    └── 3-4 fixed intents only
-    └── Demo: "Ask questions in natural language"
+Step 14: ML Model Upgrade (Optional)
+    └── Replace moving average with LightGBM/XGBoost
+    └── Demo: "Production-grade forecasting"
 ```
 
 ---
@@ -156,47 +254,63 @@ Step 8: AI Chat
 | Frontend | Next.js 16, TypeScript, Tailwind, Shadcn/ui | User interface |
 | Backend | FastAPI, Python 3.11+, Pydantic v2 | API & business logic |
 | Database (Local) | PostgreSQL 15 via Docker | Local development |
-| Database (EKS) | AWS RDS PostgreSQL | Production data |
+| Database (Prod) | AWS RDS PostgreSQL | Production data |
 | AI | Claude API (Anthropic SDK) | Chat assistant (fixed intents) |
-| Observability | Prometheus, Grafana (kube-prometheus-stack) | Metrics & dashboards |
+| Async Jobs | SQS + EventBridge | Forecast pipeline |
+| Compute | AWS ECS Fargate | Container hosting (January) |
+| Load Balancer | AWS ALB | Traffic routing |
+| Observability | CloudWatch Logs/Metrics/Alarms | Monitoring (January) |
 | Containers | Docker, Docker Compose | Local dev & packaging |
-| CI | GitHub Actions | Build, test, lint |
+| CI/CD | GitHub Actions → ECR → ECS | Build, test, deploy |
+| Cloud | AWS (ECS, ECR, RDS, SQS, EventBridge, ALB) | Production infrastructure |
+
+### February Additions
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Compute | AWS EKS | Kubernetes (upgrade from ECS) |
 | CD/GitOps | Argo CD | Automated deployments |
-| Cloud | AWS EKS, ECR, RDS | Production infrastructure |
+| ML | LightGBM/XGBoost | Advanced forecasting (optional) |
 
 ---
 
-## 5. Core Features (Tiered)
+## 5. Core Features (Phased)
 
-### Tier 1 — Product MVP (ship first)
+### Phase 0 — Local Demo (Week 1)
 
 | Feature | Description | Done When |
 |---------|-------------|-----------|
-| Landing Page | Hero, features, CTA sections | Looks polished, responsive |
+| Landing Page | Hero, features, CTA sections | Components integrated, looks polished |
 | Dashboard | Metrics cards, at-risk table, charts | Shows mock data, filter/search works |
-| Imports Page | CSV template download + file preview | Can upload CSV and see preview table |
+| Imports Page | CSV upload UI + preview | Can upload CSV and see preview table |
 | Basic API | `/healthz`, `/readyz`, `/api/v1/dashboard/summary`, `/api/v1/recommendations` | Frontend displays real API data |
 | Docker Compose | frontend + backend + postgres | `docker-compose up` works |
-| GitHub Actions CI | Lint + build for frontend and backend | Green checks on every PR |
 
-### Tier 2 — DevOps MVP (ship second)
+### Phase 1 — Live on AWS (Week 2)
 
 | Feature | Description | Done When |
 |---------|-------------|-----------|
-| ECR Push | Frontend + backend images to ECR | Images tagged with commit SHA |
-| EKS Deploy | Deployments + Services running | App accessible via LoadBalancer/Ingress |
-| Argo CD Sync | GitOps from kubernetes/ directory | Changing manifests triggers redeploy |
-| RDS PostgreSQL | Production database | Backend connects to RDS on EKS |
-| Prometheus + Grafana | kube-prometheus-stack Helm chart | Dashboard shows request rate, error rate, p95 latency |
-| /metrics Endpoint | Prometheus scraping backend | Metrics visible in Grafana |
+| GitHub Actions CI/CD | Lint + build + push ECR + deploy ECS | Green checks, auto-deploy on main |
+| ECS Fargate | Frontend + Backend services | App accessible via ALB URL |
+| RDS PostgreSQL | Production database | Backend connects, seed data loaded |
+| Async Pipeline | SQS + EventBridge + Worker | Daily forecast job runs |
+| CloudWatch | Logs + Alarms | Can see logs, alarms configured |
 
-### Tier 3 — AI MVP (ship last)
+### Phase 1.5 — AI SaaS (Week 3)
 
 | Feature | Description | Done When |
 |---------|-------------|-----------|
 | Chat Widget | Floating UI component | Opens/closes, shows messages |
 | /api/v1/ai/chat | Intent classification + response | Returns formatted answers |
-| Fixed Intents | 3-4 supported query types | All intents work correctly |
+| Fixed Intents | 4 supported query types | All intents work correctly |
+| Real Data | Chat uses forecast/recommendation data | End-to-end demo works |
+
+### Phase 2 — Platform Maturity (February)
+
+| Feature | Description | Done When |
+|---------|-------------|-----------|
+| EKS Migration | Move from ECS to EKS | App runs on Kubernetes |
+| Argo CD | GitOps deployment | Git push triggers redeploy |
+| ML Upgrade | LightGBM/XGBoost (optional) | Better forecast accuracy |
 
 ---
 
@@ -207,44 +321,48 @@ Step 8: AI Chat
 /api/v1/...
 ```
 
-### Health & Metrics (Tier 1)
+### Health & Metrics (Phase 0)
 ```
 GET  /healthz              → { "status": "healthy" }
 GET  /readyz               → { "status": "ready", "database": "connected" }
-GET  /metrics              → Prometheus format (Tier 2)
 ```
 
-### Dashboard (Tier 1)
+### Dashboard (Phase 0)
 ```
 GET  /api/v1/dashboard/summary    → Dashboard metrics + at-risk products list
 ```
 
-### Recommendations (Tier 1)
+### Recommendations (Phase 0)
 ```
 GET  /api/v1/recommendations              → List all recommendations
 GET  /api/v1/recommendations/{product_id} → Single recommendation detail
 ```
 
-### Products (Tier 1, minimal)
+### Products (Phase 0)
 ```
 GET  /api/v1/products                     → List products (with ?sort=, ?limit=)
 GET  /api/v1/products/{id}                → Single product
 ```
 
-### Imports (Tier 1, simplified)
+### Imports (Phase 0)
 ```
 GET  /api/v1/templates/{type}             → Download CSV template (products|inventory|sales)
-POST /api/v1/imports/upload               → Upload CSV, returns preview (no AI mapping)
+POST /api/v1/imports/upload               → Upload CSV, returns preview
 ```
 
-### AI Chat (Tier 3)
+### Forecasts (Phase 1)
+```
+GET  /api/v1/forecasts                    → List forecasts
+POST /api/v1/forecasts/trigger            → Manually trigger forecast job (enqueues to SQS)
+```
+
+### AI Chat (Phase 1.5)
 ```
 POST /api/v1/ai/chat                      → { "message": "..." } → { "response": "..." }
 ```
 
 **Endpoints NOT in MVP:**
 - ~~POST /api/v1/imports/map-columns~~ (AI mapping deferred)
-- ~~POST /api/v1/imports/process~~ (full import pipeline deferred)
 - ~~POST/PUT/DELETE for products~~ (read-only MVP)
 
 ---
@@ -278,6 +396,14 @@ sales_history
 ├── quantity_sold (INTEGER)
 └── created_at (TIMESTAMP)
 
+forecasts
+├── id (UUID, PK)
+├── product_id (UUID, FK)
+├── forecast_date (DATE)
+├── predicted_demand (DECIMAL)
+├── method (VARCHAR)           -- "moving_average" or "lightgbm" later
+├── created_at (TIMESTAMP)
+
 recommendations
 ├── id (UUID, PK)
 ├── product_id (UUID, FK)
@@ -296,78 +422,101 @@ recommendations
 CREATE INDEX idx_products_sku ON products(sku);
 CREATE INDEX idx_sales_product_date ON sales_history(product_id, sale_date);
 CREATE INDEX idx_inventory_product ON inventory_levels(product_id);
+CREATE INDEX idx_forecasts_product_date ON forecasts(product_id, forecast_date);
 ```
 
 ---
 
 ## 8. DevOps Pipeline
 
-### CI Flow (GitHub Actions)
+### CI/CD Flow (GitHub Actions)
+
 ```
-Push to any branch
+Push to any branch (PR)
     ├── Lint (ESLint + Ruff)
     ├── Type Check (tsc + mypy)
     └── Build Docker Images
 
 Push to main
     ├── Build & Push to ECR (tagged with commit SHA)
-    └── Update image tags in kubernetes/overlays/staging/
+    └── Deploy to ECS Fargate
 ```
 
-**Key Decision:** CI uses **GitHub OIDC → AWS IAM role** to push to ECR (no long-lived AWS keys).
+**Key Decision:** CI uses **GitHub OIDC → AWS IAM role** (no long-lived AWS keys).
 
-### CD Flow (Argo CD)
+### AWS Resources (January)
+
 ```
-Image tag updated in kubernetes/overlays/staging/
-    │
-    └── Argo CD detects change → Syncs to EKS cluster
+ECS Cluster
+├── frontend-service (Fargate)
+├── backend-service (Fargate)
+└── forecast-worker (Fargate, triggered by SQS)
+
+ALB (Application Load Balancer)
+├── / → frontend-service
+└── /api/* → backend-service
+
+RDS PostgreSQL
+└── inventorypilot database
+
+SQS
+├── forecast-jobs (main queue)
+└── forecast-jobs-dlq (dead letter queue)
+
+EventBridge
+└── daily-forecast-trigger (cron: 0 2 * * *)
+
+ECR
+├── inventorypilot-frontend
+└── inventorypilot-backend
+
+CloudWatch
+├── Log groups for ECS tasks
+├── Alarm: ALB 5xx > 5% for 5 min
+├── Alarm: ECS task restart count
+└── Alarm: SQS queue age > 1 hour
 ```
 
-### Kubernetes Resources (EKS)
+### February Additions (EKS + Argo CD)
+
 ```
-Deployments:
-├── frontend (Next.js)
-└── backend (FastAPI)
+EKS Cluster
+├── frontend deployment
+├── backend deployment
+└── forecast-worker deployment
 
-Services:
-├── frontend (LoadBalancer or Ingress)
-└── backend (ClusterIP)
+Argo CD
+└── Syncs from kubernetes/ directory
 
-Other:
-├── ConfigMaps (env vars)
-├── Secrets (credentials, RDS connection string)
-└── Ingress (routing)
-
-NOT in EKS:
-└── Postgres (using RDS instead)
+GitHub Actions (updated)
+└── Updates image tags in kubernetes/overlays/staging/
 ```
-
-### Database Strategy
-| Environment | Database |
-|-------------|----------|
-| Local dev | PostgreSQL via docker-compose |
-| EKS staging | AWS RDS PostgreSQL |
 
 ---
 
-## 9. Observability
+## 9. Observability (CloudWatch)
 
-### Done =
+### January Setup
 
-- [ ] Prometheus is scraping backend `/metrics`
-- [ ] Grafana dashboard shows:
-  - Request rate (requests/sec)
-  - Error rate (5xx responses)
-  - p95 latency
-- [ ] At least one alert rule exists (e.g., error rate > 5% for 5 minutes)
-
-### Implementation
 ```
-kube-prometheus-stack (Helm chart)
-├── Prometheus (scrapes /metrics)
-├── Grafana (dashboards)
-└── Alertmanager (alerts)
+CloudWatch Logs
+├── /ecs/inventorypilot-frontend
+├── /ecs/inventorypilot-backend
+└── /ecs/inventorypilot-worker
+
+CloudWatch Alarms
+├── ALB 5xx error rate > 5% for 5 minutes
+├── ECS task restart count > 3 in 10 minutes
+├── SQS message age > 1 hour
+└── RDS connections > 80% of max
 ```
+
+### Done Checklist
+
+- [ ] ECS tasks logging to CloudWatch
+- [ ] ALB 5xx alarm configured
+- [ ] SQS queue age alarm configured
+- [ ] Can view logs in AWS Console
 
 ---
 
@@ -383,7 +532,7 @@ Intent Classification (Claude API)
     ├── "running_low"     → GET /api/v1/recommendations?at_risk=true
     ├── "why_at_risk"     → GET /api/v1/recommendations/{product_id}
     ├── "what_to_order"   → GET /api/v1/recommendations?limit=10
-    └── "top_sellers"     → GET /api/v1/products?sort=sales_velocity&limit=5
+    └── "forecast"        → GET /api/v1/forecasts?product_id={id}
     │
     ▼
 Format Response (Claude API)
@@ -399,7 +548,7 @@ Return to User
 | "What products are running low?" | running_low | GET /recommendations?at_risk=true |
 | "Why is SKU-1234 at risk?" | why_at_risk | GET /recommendations/{id} |
 | "What should I order this week?" | what_to_order | GET /recommendations?limit=10 |
-| "Show me top sellers" | top_sellers | GET /products?sort=sales_velocity&limit=5 |
+| "What's the forecast for SKU-1234?" | forecast | GET /forecasts?product_id={id} |
 
 ### Hard Rules
 - AI **never** queries database directly
@@ -418,11 +567,11 @@ InventoryManagement/
 │   │   ├── app/                  # App Router pages
 │   │   │   ├── page.tsx          # Landing page (/)
 │   │   │   ├── (marketing)/      # Marketing routes
-│   │   │   └── (dashboard)/      # Authenticated routes
+│   │   │   └── (dashboard)/      # Dashboard routes
 │   │   ├── components/           # React components
 │   │   │   ├── landing/          # Landing page components
 │   │   │   ├── dashboard/        # Dashboard components
-│   │   │   └── ai/               # AI chat components (Tier 3)
+│   │   │   └── ai/               # AI chat components
 │   │   └── lib/                  # Utilities & API client
 │   ├── Dockerfile
 │   └── package.json
@@ -435,24 +584,27 @@ InventoryManagement/
 │   │   ├── models/               # SQLAlchemy models
 │   │   ├── schemas/              # Pydantic schemas
 │   │   ├── services/             # Business logic
+│   │   │   └── forecasting.py    # Moving average logic
 │   │   └── database/             # DB connection & session
-│   ├── alembic/                  # Database migrations
+│   ├── worker/                   # SQS worker for forecasts
+│   │   └── forecast_worker.py
 │   ├── tests/
 │   ├── Dockerfile
 │   └── requirements.txt
 │
-├── kubernetes/                   # K8s manifests for Argo CD
+├── infrastructure/               # AWS infrastructure (Terraform or CDK)
+│   ├── ecs/                      # ECS task definitions
+│   ├── rds/                      # RDS configuration
+│   └── sqs/                      # SQS + EventBridge
+│
+├── kubernetes/                   # K8s manifests (February)
 │   ├── base/                     # Base manifests
 │   └── overlays/                 # Environment-specific
 │       └── staging/              # Staging overrides
 │
-├── observability/                # Local observability config
-│   ├── prometheus/prometheus.yml
-│   └── grafana/dashboards/
-│
 ├── .github/workflows/            # CI/CD pipelines
 │   ├── ci.yml                    # Lint, test, build
-│   └── build-push.yml            # Build & push to ECR
+│   └── deploy.yml                # Build, push ECR, deploy ECS
 │
 ├── docker-compose.yml            # Local development
 ├── Makefile                      # Dev commands
@@ -503,7 +655,9 @@ make db-seed          # Seed with sample data
 
 # Docker
 make build            # Build all images
-make push             # Push to ECR
+
+# AWS (after infrastructure is set up)
+make deploy           # Deploy to ECS
 ```
 
 ---
@@ -520,13 +674,15 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 DATABASE_URL=postgresql://user:pass@localhost:5432/inventorypilot
 ANTHROPIC_API_KEY=sk-ant-...
 CORS_ORIGINS=http://localhost:3000
+AWS_REGION=us-east-1
+SQS_FORECAST_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/...
 ```
 
 ---
 
 ## 15. Quick Reference
 
-### Forecasting Formula
+### Forecasting Formula (Moving Average)
 ```
 avg_weekly_demand = sum(last_4_weeks_sales) / 4
 lead_time_demand = avg_weekly_demand * (lead_time_days / 7)
@@ -545,14 +701,17 @@ days_left = current_stock / (avg_weekly_demand / 7)
 { "status": "ready", "database": "connected" }
 ```
 
+### Interview Pitch
+> "I built an AI-powered inventory management SaaS. The backend runs on ECS Fargate with an async forecasting pipeline using SQS and EventBridge. The AI assistant uses Claude to help users understand demand patterns and reorder recommendations. I'm currently evolving the deployment to GitOps with EKS and Argo CD."
+
 ---
 
 ## 16. File Creation Checklist
 
 When creating a new file, Claude Code should:
 
-- [ ] Check which Tier this feature belongs to
-- [ ] Verify prerequisites from earlier tiers are complete
+- [ ] Check which Phase this feature belongs to
+- [ ] Verify prerequisites from earlier phases are complete
 - [ ] Explain what the file does and why it's needed
 - [ ] Show where it fits in the directory structure
 - [ ] Include all necessary imports
