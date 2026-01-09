@@ -4,10 +4,28 @@ import { useState } from "react";
 
 export default function ImportsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [csvText, setCsvText] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     setSelectedFile(file);
+    setCsvText("");
+    setError(null);
+
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        setCsvText(result);
+      } else {
+        setError("Failed to read file as text.");
+      }
+    };
+    reader.onerror = () => setError("Failed to read file.");
+    reader.readAsText(file);
   };
 
   return (
