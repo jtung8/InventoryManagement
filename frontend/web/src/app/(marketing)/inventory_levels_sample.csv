@@ -1,0 +1,8 @@
+sku,name,category,on_hand,allocated,available,lead_time_days,unit_cost,supplier,location,updated_at
+TEE-BLK-M,Essential Cotton Tee,Tops,12,3,9,21,8.57,Acme Apparel Co.,WH1-A1,2026-01-09
+TEE-BLK-L,Essential Cotton Tee,Tops,9,2,7,14,8.57,Acme Apparel Co.,WH1-A1,2026-01-09
+JNS-IND-32,Slim Fit Jeans - Indigo,Bottoms,8,2,6,7,24.29,Acme Apparel Co.,WH1-A1,2026-01-09
+HDY-GRY-L,Oversized Hoodie,Outerwear,5,1,4,21,19.29,Acme Apparel Co.,WH1-A1,2026-01-09
+DRS-FLR-S,Floral Midi Dress,Dresses,3,1,2,7,31.43,Acme Apparel Co.,WH1-A1,2026-01-09
+SNK-WHT-10,Canvas Sneakers - White,Footwear,18,4,14,14,25.71,Acme Apparel Co.,WH1-A1,2026-01-09
+BAG-CAN-TN,Canvas Tote Bag - Tan,Accessories,25,6,19,14,11.43,Acme Apparel Co.,WH1-A1,2026-01-09
