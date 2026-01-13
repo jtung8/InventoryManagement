@@ -1,21 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Papa from "papaparse";
 
+const PREVIEW_OPTIONS = [10, 25, 50] as const;
+
 export default function ImportsPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [rows, setRows] = useState<string[][]>([]);
-  const [totalRows, setTotalRows] = useState(0);
+  const [allRows, setAllRows] = useState<string[][]>([]);
+  const [previewLimit, setPreviewLimit] = useState(10);
   const [error, setError] = useState<string | null>(null);
+
+  // Derived values
+  const totalRows = allRows.length;
+  const effectiveLimit = Math.min(previewLimit, 200, totalRows);
+  const displayRows = allRows.slice(0, effectiveLimit);
+
+  const handleClear = () => {
+    setSelectedFile(null);
+    setHeaders([]);
+    setAllRows([]);
+    setPreviewLimit(10);
+    setError(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     setSelectedFile(file);
     setHeaders([]);
-    setRows([]);
-    setTotalRows(0);
+    setAllRows([]);
+    setPreviewLimit(10);
     setError(null);
 
     if (!file) return;
@@ -42,9 +62,7 @@ export default function ImportsPage() {
       }
 
       setHeaders(data[0]);
-      const dataRows = data.slice(1);
-      setTotalRows(dataRows.length);
-      setRows(dataRows.slice(0, 10));
+      setAllRows(data.slice(1));
     };
     reader.onerror = () => setError("Failed to read file.");
     reader.readAsText(file);
@@ -88,6 +106,7 @@ export default function ImportsPage() {
             <p className="text-xs text-[#64748B]">CSV files only</p>
           </div>
           <input
+            ref={fileInputRef}
             id="csv-upload"
             type="file"
             accept=".csv"
@@ -100,9 +119,17 @@ export default function ImportsPage() {
         {selectedFile && (
           <div className="mt-4 p-3 bg-[#334155]/50 rounded-lg flex items-center justify-between">
             <span className="text-sm text-[#F8FAFC]">{selectedFile.name}</span>
-            <span className="text-xs text-[#94A3B8]">
-              {(selectedFile.size / 1024).toFixed(1)} KB
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#94A3B8]">
+                {(selectedFile.size / 1024).toFixed(1)} KB
+              </span>
+              <button
+                onClick={handleClear}
+                className="text-xs text-[#EF4444] hover:text-[#F87171] transition-colors"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         )}
 
@@ -111,51 +138,82 @@ export default function ImportsPage() {
           <p className="mt-4 text-sm text-[#EF4444]">{error}</p>
         )}
 
+        {/* Empty state - no file selected */}
+        {!selectedFile && !error && (
+          <p className="mt-4 text-sm text-[#94A3B8] text-center">
+            Upload a CSV to preview rows.
+          </p>
+        )}
+
         {/* CSV table preview */}
         {headers.length > 0 && (
           <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-[#94A3B8]">Preview</p>
-              {totalRows > 10 && (
-                <p className="text-xs text-[#64748B]">
-                  Showing 10 of {totalRows} rows
-                </p>
-              )}
+            {/* Preview controls */}
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <label htmlFor="preview-limit" className="text-sm text-[#94A3B8]">
+                  Rows to preview
+                </label>
+                <select
+                  id="preview-limit"
+                  value={previewLimit}
+                  onChange={(e) => setPreviewLimit(Number(e.target.value))}
+                  className="rounded bg-[#0A1628] border border-[#334155] px-2 py-1 text-xs text-[#F8FAFC] outline-none focus:border-[#06B6D4]"
+                >
+                  {PREVIEW_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt} disabled={totalRows < opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-[#64748B]">
+                Showing {effectiveLimit} of {totalRows} rows
+                {totalRows > 200 && " (Preview capped at 200 rows)"}
+              </p>
             </div>
-            <div className="overflow-x-auto rounded-lg border border-[#334155]">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-[#0A1628]">
-                    {headers.map((header, i) => (
-                      <th
-                        key={i}
-                        className="px-3 py-2 text-left text-[#94A3B8] font-medium whitespace-nowrap"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, rowIndex) => (
-                    <tr
-                      key={rowIndex}
-                      className="border-t border-[#334155] hover:bg-[#334155]/30"
-                    >
-                      {row.map((cell, cellIndex) => (
-                        <td
-                          key={cellIndex}
-                          className="px-3 py-2 text-[#F8FAFC] max-w-[200px] truncate"
-                          title={cell}
+
+            {/* No data rows state */}
+            {totalRows === 0 ? (
+              <p className="text-sm text-[#94A3B8] text-center py-4">
+                No data rows found.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-[#334155]">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#0A1628]">
+                      {headers.map((header, i) => (
+                        <th
+                          key={i}
+                          className="px-3 py-2 text-left text-[#94A3B8] font-medium whitespace-nowrap"
                         >
-                          {cell}
-                        </td>
+                          {header}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {displayRows.map((row, rowIndex) => (
+                      <tr
+                        key={rowIndex}
+                        className="border-t border-[#334155] hover:bg-[#334155]/30"
+                      >
+                        {row.map((cell, cellIndex) => (
+                          <td
+                            key={cellIndex}
+                            className="px-3 py-2 text-[#F8FAFC] max-w-[200px] truncate"
+                            title={cell}
+                          >
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
