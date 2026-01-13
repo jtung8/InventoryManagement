@@ -1,17 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import Papa from "papaparse";
 
-const PREVIEW_OPTIONS = [10, 25, 50] as const;
+const PREVIEW_OPTIONS = [10, 25, 50, 200] as const;
 
 export default function ImportsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadIdRef = useRef(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [allRows, setAllRows] = useState<string[][]>([]);
   const [previewLimit, setPreviewLimit] = useState(10);
   const [error, setError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Derived values
   const totalRows = allRows.length;
@@ -24,6 +28,8 @@ export default function ImportsPage() {
     setAllRows([]);
     setPreviewLimit(10);
     setError(null);
+    setSavedAt(null);
+    setSaveError(null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -37,11 +43,20 @@ export default function ImportsPage() {
     setAllRows([]);
     setPreviewLimit(10);
     setError(null);
+    setSavedAt(null);
+    setSaveError(null);
 
     if (!file) return;
 
+    // Increment load ID so stale callbacks from previous uploads are ignored
+    loadIdRef.current += 1;
+    const currentLoadId = loadIdRef.current;
+
     const reader = new FileReader();
     reader.onload = () => {
+      // Ignore if a newer upload has started
+      if (currentLoadId !== loadIdRef.current) return;
+
       const result = reader.result;
       if (typeof result !== "string") {
         setError("Failed to read file as text.");
@@ -61,11 +76,41 @@ export default function ImportsPage() {
         return;
       }
 
-      setHeaders(data[0]);
-      setAllRows(data.slice(1));
+      const parsedHeaders = data[0];
+      const parsedRows = data.slice(1);
+
+      setHeaders(parsedHeaders);
+      setAllRows(parsedRows);
+
+      // Save to localStorage with try/catch for quota limits
+      const now = new Date().toISOString();
+      const payload = {
+        schemaVersion: 1,
+        source: "imports-page",
+        filename: file.name,
+        savedAt: now,
+        headers: parsedHeaders,
+        rows: parsedRows,
+        totalRows: parsedRows.length,
+      };
+
+      try {
+        localStorage.setItem("inventorypilot:uploadedRows", JSON.stringify(payload));
+        setSavedAt(now);
+      } catch {
+        setSaveError("Could not save to local storage (file may be too large).");
+      }
     };
-    reader.onerror = () => setError("Failed to read file.");
+    reader.onerror = () => {
+      if (currentLoadId !== loadIdRef.current) return;
+      setError("Failed to read file.");
+    };
     reader.readAsText(file);
+
+    // Reset input value so the same file can be re-selected (e.g., after updating it)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -118,7 +163,14 @@ export default function ImportsPage() {
         {/* Selected file display */}
         {selectedFile && (
           <div className="mt-4 p-3 bg-[#334155]/50 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-[#F8FAFC]">{selectedFile.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#F8FAFC]">{selectedFile.name}</span>
+              {savedAt && (
+                <span className="text-xs text-[#10B981]">
+                  Saved at {new Date(savedAt).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-[#94A3B8]">
                 {(selectedFile.size / 1024).toFixed(1)} KB
@@ -131,6 +183,11 @@ export default function ImportsPage() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Save error warning */}
+        {saveError && (
+          <p className="mt-2 text-sm text-[#F59E0B]">{saveError}</p>
         )}
 
         {/* Error message */}
@@ -215,6 +272,29 @@ export default function ImportsPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Go to Dashboard link */}
+        {savedAt && (
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-flex items-center gap-1 text-sm text-[#06B6D4] hover:text-[#22D3EE] transition-colors"
+          >
+            Go to Dashboard
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </Link>
         )}
       </div>
     </div>
