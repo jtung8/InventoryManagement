@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 // Shape of localStorage payload from imports page
 interface UploadedData {
@@ -19,6 +20,80 @@ function safeParseJSON<T>(json: string | null): T | null {
   } catch {
     return null;
   }
+}
+
+// Product shape used by the table
+interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  available: number;
+  daysUntilStockout: number;
+  leadTimeDays: number;
+  recommendedQty: number;
+  unitCost: number;
+}
+
+// Column name aliases (case-insensitive matching)
+const COLUMN_ALIASES: Record<string, string[]> = {
+  sku: ["sku"],
+  name: ["name", "product", "product_name", "title"],
+  category: ["category", "type"],
+  available: ["available", "on_hand", "stock", "qty_available"],
+  unitCost: ["unit_cost", "cost", "unitcost"],
+};
+
+// Build a map of field name -> column index from headers
+function buildColumnIndexMap(headers: string[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  const normalizedHeaders = headers.map((h) => h.trim().toLowerCase());
+
+  for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
+    for (const alias of aliases) {
+      const index = normalizedHeaders.indexOf(alias);
+      if (index !== -1) {
+        map[field] = index;
+        break;
+      }
+    }
+  }
+  return map;
+}
+
+// Transform uploaded CSV rows into Product objects
+function transformUploadedData(data: UploadedData): Product[] {
+  const colMap = buildColumnIndexMap(data.headers);
+
+  return data.rows.map((row, index) => {
+    const getValue = (field: string): string => {
+      const colIndex = colMap[field];
+      return colIndex !== undefined ? (row[colIndex] ?? "").trim() : "";
+    };
+
+    const sku = getValue("sku") || `ROW-${index + 1}`;
+    const name = getValue("name") || sku;
+    const category = getValue("category") || "Uncategorized";
+    const available = parseInt(getValue("available"), 10) || 0;
+    const unitCost = parseFloat(getValue("unitCost")) || 0;
+
+    // Placeholder heuristics for computed fields (will be replaced by forecasting)
+    const daysUntilStockout = available <= 5 ? 3 : 7;
+    const leadTimeDays = 14;
+    const recommendedQty = Math.max(0, 50 - available);
+
+    return {
+      id: sku || `row-${index}`,
+      sku,
+      name,
+      category,
+      available,
+      daysUntilStockout,
+      leadTimeDays,
+      recommendedQty,
+      unitCost,
+    };
+  });
 }
 
 // Mock data - will be replaced with API calls in Phase 1
@@ -92,19 +167,6 @@ const mockAtRiskProducts = [
   },
 ];
 
-// Dashboard metrics - cashflow focused
-const metrics = {
-  totalSkus: 847, // placeholder until API
-  atRiskSkus: mockAtRiskProducts.length,
-  potentialRevenue: mockAtRiskProducts.reduce(
-    (sum, p) => sum + p.recommendedQty * p.unitCost * 2.5, // ~2.5x markup for retail
-    0
-  ),
-  reorderCost: mockAtRiskProducts.reduce(
-    (sum, p) => sum + p.recommendedQty * p.unitCost,
-    0
-  ),
-};
 
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -119,20 +181,41 @@ export default function DashboardPage() {
   // Derived: whether we have uploaded data
   const hasUploadedData = uploadedData !== null;
 
+  // Transform uploaded data into Product objects, or use mock data
+  const activeProducts: Product[] = useMemo(() => {
+    if (uploadedData) {
+      return transformUploadedData(uploadedData);
+    }
+    return mockAtRiskProducts;
+  }, [uploadedData]);
+
+  // Compute metrics from active data source
+  const metrics = useMemo(() => {
+    const totalSkus = uploadedData ? uploadedData.totalRows : 847;
+    const atRiskSkus = activeProducts.length;
+    const reorderCost = activeProducts.reduce(
+      (sum, p) => sum + p.recommendedQty * p.unitCost,
+      0
+    );
+    const potentialRevenue = activeProducts.reduce(
+      (sum, p) => sum + p.recommendedQty * p.unitCost * 2.5, // ~2.5x markup for retail
+      0
+    );
+    return { totalSkus, atRiskSkus, reorderCost, potentialRevenue };
+  }, [uploadedData, activeProducts]);
+
   // Derive unique categories from data (sorted)
   const categories = useMemo(() => {
-    const unique = Array.from(
-      new Set(mockAtRiskProducts.map((p) => p.category))
-    );
+    const unique = Array.from(new Set(activeProducts.map((p) => p.category)));
     unique.sort();
     return ["all", ...unique];
-  }, []);
+  }, [activeProducts]);
 
   // Filter products based on search + category
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    return mockAtRiskProducts.filter((product) => {
+    return activeProducts.filter((product) => {
       const matchesSearch =
         q.length === 0 ||
         product.sku.toLowerCase().includes(q) ||
@@ -143,7 +226,7 @@ export default function DashboardPage() {
 
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, categoryFilter]);
+  }, [searchQuery, categoryFilter, activeProducts]);
 
   return (
     <div className="min-h-screen bg-[#0A1628] text-[#F8FAFC] p-8">
@@ -156,6 +239,22 @@ export default function DashboardPage() {
         <p className="text-xs text-[#64748B] mt-1">
           Data source: {hasUploadedData ? "Uploaded CSV" : "Mock data"}
         </p>
+        <div className="flex items-center gap-3 mt-2">
+          <Link
+            href="/imports"
+            className="text-xs text-[#64748B] hover:text-[#94A3B8] transition-colors"
+          >
+            Back to Imports
+          </Link>
+          {hasUploadedData && (
+            <Link
+              href="/imports"
+              className="text-xs text-[#06B6D4] hover:text-[#22D3EE] transition-colors"
+            >
+              Change CSV
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Metrics Cards - Cashflow Focused */}
