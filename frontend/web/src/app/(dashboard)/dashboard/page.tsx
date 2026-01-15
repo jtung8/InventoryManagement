@@ -2,6 +2,25 @@
 
 import { useMemo, useState } from "react";
 
+// Shape of localStorage payload from imports page
+interface UploadedData {
+  headers: string[];
+  rows: string[][];
+  totalRows: number;
+  filename: string;
+  savedAt: string;
+}
+
+// Safe JSON parse helper - returns null on failure
+function safeParseJSON<T>(json: string | null): T | null {
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return null;
+  }
+}
+
 // Mock data - will be replaced with API calls in Phase 1
 // Fashion/apparel inventory focused
 const mockAtRiskProducts = [
@@ -90,6 +109,15 @@ const metrics = {
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  // Read uploaded data from localStorage (lazy initializer runs once on mount)
+  const [uploadedData] = useState<UploadedData | null>(() => {
+    if (typeof window === "undefined") return null; // SSR guard
+    const raw = localStorage.getItem("inventorypilot:uploadedRows");
+    return safeParseJSON<UploadedData>(raw);
+  });
+
+  // Derived: whether we have uploaded data
+  const hasUploadedData = uploadedData !== null;
 
   // Derive unique categories from data (sorted)
   const categories = useMemo(() => {
@@ -124,6 +152,9 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
         <p className="text-[#94A3B8]">
           Inventory health and cashflow at a glance
+        </p>
+        <p className="text-xs text-[#64748B] mt-1">
+          Data source: {hasUploadedData ? "Uploaded CSV" : "Mock data"}
         </p>
       </div>
 

@@ -59,6 +59,9 @@ DON'T:
 | AI chat with router pattern | Makes it an "AI SaaS" |
 | CloudWatch observability | Lean, sufficient for portfolio |
 | GitHub Actions CI/CD | Industry standard |
+| CSV templates + validation | Professional onboarding, builds trust (static files, no API) |
+| Export reorder CSV | Actionable workflow artifact merchants actually use |
+| Forecast run status | Transparency — "jobs you can trust" |
 
 ### January MVP (OUT OF SCOPE)
 
@@ -88,6 +91,33 @@ DON'T:
 - No "agent brain" or free-form database access
 
 **If you're tempted to add something not listed in the current phase, don't.**
+
+---
+
+## 1.5 Success Criteria (MVP)
+
+These lightweight features make the app feel production-ready without adding infrastructure complexity. They're what separates a "tech demo" from a "real product."
+
+### Onboarding Flow
+- **3-step "Getting started" banner**: Upload products → Upload sales → View recommendations
+- **Downloadable CSV templates**: Static files in `frontend/public/templates/` (no API needed)
+- **Column validation on import**: Required fields (sku, date, qty), clear error messages
+- **Import feedback**: "X rows accepted, Y rejected" with reasons
+
+### Actionable Output
+- **"Export reorder CSV" button** on dashboard
+- **CSV columns**: sku, name, recommendedQty, unitCost, reorderCost, daysLeft
+- This is the workflow artifact — what merchants actually take action on
+- Frontend-generated (no backend export endpoint needed)
+
+### Run Visibility
+- **`forecast_runs` table**: run_id, started_at, status, method, rows_processed
+- **Dashboard shows**: "Last forecast: Success at 03:00 AM"
+- Builds trust that the async pipeline is actually working
+
+### Operational Signals
+- CloudWatch alarms (already planned) documented in README as "alerts"
+- Optional: in-app banner if `atRiskSkus > threshold` (pure UI, no notification service)
 
 ---
 
@@ -165,11 +195,15 @@ Step 1: UI Flows + Mock Data
     └── Integrate landing page components into page.tsx
     └── Build Dashboard page (metrics cards, at-risk table, charts)
     └── Build Imports page (CSV upload UI + preview)
+    └── Add "Getting started" banner (3-step onboarding)
+    └── Add CSV template download links (static files in public/templates/)
     └── Demo: "Here's what the product looks like"
 
 Step 2: Minimal FastAPI Backend
     └── /healthz, /readyz
     └── /api/v1/dashboard/summary, /api/v1/recommendations
+    └── POST /api/v1/imports/upload with column validation
+    └── Return accepted/rejected row counts + error reasons
     └── Hard-coded/seed data is fine
     └── Demo: "Frontend talks to real API"
 
@@ -201,6 +235,8 @@ Step 7: Async Pipeline (SQS + EventBridge)
     └── SQS queue for forecast jobs (+ DLQ)
     └── EventBridge rule triggers daily
     └── Worker task runs moving average forecast
+    └── Log each run to forecast_runs table (status, rows_processed)
+    └── GET /api/v1/forecasts/runs/latest endpoint
     └── Demo: "Nightly forecast job runs automatically"
 
 Step 8: CloudWatch Observability
@@ -224,6 +260,8 @@ Step 10: /api/v1/ai/chat Endpoint
 
 Step 11: Polish + Demo Prep
     └── Connect chat to real forecast/recommendation data
+    └── "Export reorder CSV" button on dashboard
+    └── Show "Last forecast run: Success at 03:00" on dashboard
     └── End-to-end flow works
     └── Demo: "AI explains demand patterns and reorder actions"
 ```
@@ -354,6 +392,7 @@ POST /api/v1/imports/upload               → Upload CSV, returns preview
 ```
 GET  /api/v1/forecasts                    → List forecasts
 POST /api/v1/forecasts/trigger            → Manually trigger forecast job (enqueues to SQS)
+GET  /api/v1/forecasts/runs/latest        → Latest forecast run status (for dashboard)
 ```
 
 ### AI Chat (Phase 1.5)
@@ -415,6 +454,15 @@ recommendations
 ├── days_left (DECIMAL)
 ├── explanation (JSONB)
 └── created_at (TIMESTAMP)
+
+forecast_runs
+├── id (UUID, PK)
+├── started_at (TIMESTAMP)
+├── completed_at (TIMESTAMP)
+├── status (VARCHAR)              -- "running", "success", "failed"
+├── method (VARCHAR)              -- "moving_average"
+├── rows_processed (INTEGER)
+└── error_message (TEXT)          -- null if success
 ```
 
 ### Key Indexes
@@ -702,7 +750,7 @@ days_left = current_stock / (avg_weekly_demand / 7)
 ```
 
 ### Interview Pitch
-> "I built an AI-powered inventory management SaaS. The backend runs on ECS Fargate with an async forecasting pipeline using SQS and EventBridge. The AI assistant uses Claude to help users understand demand patterns and reorder recommendations. I'm currently evolving the deployment to GitOps with EKS and Argo CD."
+> "I built an AI-powered inventory management SaaS for local retailers. It forecasts demand, recommends reorder quantities with lead-time awareness, and shows cash impact — so merchants know what to order, when, and what it'll cost before they stock out. The backend runs on ECS Fargate with an async forecasting pipeline using SQS and EventBridge. Users can export actionable reorder plans as CSV. The AI assistant uses Claude to explain what's at risk and what to do next. I'm currently evolving the deployment to GitOps with EKS and Argo CD."
 
 ---
 
@@ -719,3 +767,23 @@ When creating a new file, Claude Code should:
 - [ ] Include error handling where appropriate
 - [ ] Follow existing patterns from similar files
 - [ ] Note any related files that may need updates
+
+---
+
+## 17. Demo Script (30 seconds)
+
+**The flow:**
+1. "Upload your sales + inventory CSV"
+2. "Instantly see which SKUs will stock out"
+3. "See when you need to reorder (lead-time aware)"
+4. "See how much it will cost"
+5. "Export your reorder plan as CSV"
+6. "Ask the AI: 'Why is this at risk?'"
+
+**One-liner pitch:**
+> "We tell you what to reorder, when to reorder it, and what it'll cost — before you stock out."
+
+**Target customer:** Boutiques, streetwear brands, small multi-SKU shops with supplier lead times and limited cash.
+
+**Why not just use Shopify apps?**
+> "Shopify apps are often either basic reorder alerts or heavy enterprise tools. We're the middle: forecasting-driven reorder planning that's fast to set up, lead-time aware, and easy enough for a local shop owner."
