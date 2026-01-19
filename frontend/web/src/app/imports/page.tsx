@@ -123,6 +123,62 @@ export default function ImportsPage() {
         </p>
       </div>
 
+      {/* Getting Started Banner */}
+      <div className="bg-[#1E293B] rounded-xl p-6 shadow-lg max-w-2xl mb-6">
+        <h2 className="text-xl font-semibold mb-1">Getting Started</h2>
+        <p className="text-sm text-[#94A3B8] mb-4">Import in 3 quick steps</p>
+
+        <ol className="space-y-4">
+          {/* Step 1 - MVP (active) */}
+          <li className="flex items-start gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#06B6D4] text-[#0A1628] text-sm font-bold flex items-center justify-center">
+              1
+            </span>
+            <div>
+              <p className="text-[#F8FAFC] font-medium">
+                Upload an Inventory Snapshot CSV
+              </p>
+              <p className="text-xs text-[#94A3B8] mt-1">
+                Recommended headers:{" "}
+                <code className="bg-[#0A1628] px-1.5 py-0.5 rounded text-[#06B6D4]">
+                  sku,name,category,available,unit_cost
+                </code>
+              </p>
+            </div>
+          </li>
+
+          {/* Step 2 - Coming next */}
+          <li className="flex items-start gap-3 opacity-60">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#334155] text-[#94A3B8] text-sm font-bold flex items-center justify-center">
+              2
+            </span>
+            <div className="flex items-center gap-2">
+              <p className="text-[#94A3B8] font-medium">
+                Upload Sales History for forecasting
+              </p>
+              <span className="text-xs bg-[#334155] text-[#64748B] px-2 py-0.5 rounded-full">
+                Coming next
+              </span>
+            </div>
+          </li>
+
+          {/* Step 3 - Coming next */}
+          <li className="flex items-start gap-3 opacity-60">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#334155] text-[#94A3B8] text-sm font-bold flex items-center justify-center">
+              3
+            </span>
+            <div className="flex items-center gap-2">
+              <p className="text-[#94A3B8] font-medium">
+                Review reorder recommendations on Dashboard
+              </p>
+              <span className="text-xs bg-[#334155] text-[#64748B] px-2 py-0.5 rounded-full">
+                Coming next
+              </span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
       {/* Upload Card */}
       <div className="bg-[#1E293B] rounded-xl p-6 shadow-lg max-w-2xl">
         <h2 className="text-xl font-semibold mb-4">Upload CSV</h2>
