@@ -1,0 +1,5 @@
+order_id,order_date,sku,quantity,unit_price,currency,channel
+10001,2026-01-05T14:22:00Z,TEE-BLK-M,2,24.00,USD,shopify
+10002,2026-01-05T16:10:00Z,MUG-WHT-12OZ,1,14.00,USD,shopify
+10003,2026-01-06T09:03:00Z,SOAP-LAV-100,4,6.00,USD,pos
+10004,2026-01-06T11:47:00Z,CNDL-VAN-8,1,18.00,USD,shopify

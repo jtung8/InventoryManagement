@@ -1,0 +1,5 @@
+sku,name,category,available,unit_cost,price,vendor,barcode
+TEE-BLK-M,"Cotton Tee (Black, M)",Apparel,42,6.50,24.00,Acme Apparel,0123456789012
+MUG-WHT-12OZ,Ceramic Mug 12oz (White),Home & Kitchen,18,3.10,14.00,Acme Home,0987654321098
+SOAP-LAV-100,Lavender Soap Bar 100g,Beauty,120,1.05,6.00,Acme Beauty,1231231231231
+CNDL-VAN-8,Vanilla Candle 8oz,Home & Kitchen,9,4.25,18.00,Acme Home,3213213213213
