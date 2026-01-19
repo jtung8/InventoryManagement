@@ -246,6 +246,14 @@ export default function ImportsPage() {
           />
         </label>
 
+        {/* Helper note */}
+        <p className="mt-3 text-xs text-[#64748B]">
+          Recommended for MVP: upload an Inventory Snapshot CSV with headers like{" "}
+          <code className="bg-[#0A1628] px-1.5 py-0.5 rounded text-[#06B6D4] font-mono">
+            sku,name,category,available,unit_cost
+          </code>
+        </p>
+
         {/* Selected file display */}
         {selectedFile && (
           <div className="mt-4 p-3 bg-[#334155]/50 rounded-lg flex items-center justify-between">
