@@ -179,6 +179,36 @@ export default function ImportsPage() {
         </ol>
       </div>
 
+      {/* Download Templates */}
+      <div className="max-w-2xl mb-6">
+        <h3 className="text-sm font-semibold text-[#94A3B8] mb-1">
+          Download templates
+        </h3>
+        <p className="text-xs text-[#64748B] mb-2">
+          Start with the Inventory Snapshot template.
+        </p>
+        <a
+          href="/templates/inventorypilot-template-inventory-snapshot.csv"
+          download
+          className="inline-flex items-center gap-1.5 text-sm text-[#06B6D4] hover:text-[#22D3EE] transition-colors"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          Inventory Snapshot CSV template
+        </a>
+      </div>
+
       {/* Upload Card */}
       <div className="bg-[#1E293B] rounded-xl p-6 shadow-lg max-w-2xl">
         <h2 className="text-xl font-semibold mb-4">Upload CSV</h2>
