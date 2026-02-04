@@ -27,6 +27,10 @@
 
 6. **Reference this file**: Before making architectural decisions, check this document for established patterns and conventions.
 
+7. **Use MCP tools for code quality**:
+   - **Frontend Design Plugin**: Always use when building/modifying UI components, pages, or interfaces for high design quality
+   - **Context7 MCP**: Use to query up-to-date documentation for libraries (Next.js, React, Tailwind, etc.)
+
 ### Code Quality Standards
 
 ```
