@@ -1,16 +1,37 @@
 # Handoff Document - InventoryPilot MVP
 
-> **Last updated**: 2025-01-19
-> **Current phase**: Phase 0 — Local Demo (Step 1 nearly complete)
+> **Last updated**: 2025-02-04
+> **Current phase**: Phase 0 — Local Demo (Step 1 complete, Day 5 next)
 
 ---
 
 ## What's Been Built
 
+### Landing Page (`/`)
+**File**: `frontend/web/src/app/page.tsx`
+
+- **Navbar**: Brand "InventoryPilot" + "Upload CSV" CTA → `/imports`
+- **Hero section**:
+  - Eyebrow: "Inventory clarity in seconds"
+  - Headline: "Upload a CSV. See what's at risk."
+  - Primary CTA: "Upload CSV" → `/imports`
+  - Secondary CTA: "View Demo Dashboard" → `/dashboard`
+- **How It Works section**: 3-step flow with cyan numbered circles
+  - Step 1: Upload your CSV
+  - Step 2: Preview your data
+  - Step 3: See your dashboard
+- **Footer**: Brand + copyright
+
 ### Imports Page (`/imports`)
 **File**: `frontend/web/src/app/imports/page.tsx`
 
-- CSV file upload with drag-and-drop UI
+- **Getting Started Banner**: 3-step onboarding
+  - Step 1 (active): Upload an Inventory Snapshot CSV
+  - Step 2 (coming next): Upload Sales History for forecasting
+  - Step 3 (coming next): Review reorder recommendations on Dashboard
+- **Download Templates section**: Link to CSV template
+- **CSV file upload** with drag-and-drop UI
+- **Helper note** under uploader with recommended headers
 - PapaParse for CSV parsing with `skipEmptyLines: true`
 - Table preview with configurable row limit (10/25/50/200)
 - Clear button to reset upload state
@@ -68,36 +89,42 @@ Accessible at: `/templates/inventorypilot-template-inventory-snapshot.csv`
 
 ## What Works
 
-1. **Upload flow**: Upload CSV → Preview → Save to localStorage → Navigate to Dashboard
-2. **Dashboard reads uploaded data**: Transforms CSV into table rows with correct column mapping
-3. **Metrics update**: Total SKUs, At Risk count, Reorder Cost, Potential Revenue all compute from uploaded data
-4. **Search/filter**: Works on uploaded data
-5. **Race condition handling**: Fast file switching doesn't cause stale data overwrites
-6. **Same file re-upload**: Can re-upload same file after editing it externally
+1. **Landing page**: Hero with value prop + CTAs + How It Works section
+2. **Upload flow**: Upload CSV → Preview → Save to localStorage → Navigate to Dashboard
+3. **Dashboard reads uploaded data**: Transforms CSV into table rows with correct column mapping
+4. **Metrics update**: Total SKUs, At Risk count, Reorder Cost, Potential Revenue all compute from uploaded data
+5. **Search/filter**: Works on uploaded data
+6. **Race condition handling**: Fast file switching doesn't cause stale data overwrites
+7. **Same file re-upload**: Can re-upload same file after editing it externally
+8. **Template download**: Users can download CSV template from Imports page
 
 ---
 
-## What's NOT Done Yet (Remaining Step 1 Tasks)
+## Step 1 Tasks (COMPLETE)
 
-Per CLAUDE.md Build Order, Step 1 still needs:
+| Task | Status |
+|------|--------|
+| Landing page with Hero + How It Works | ✅ Done |
+| Getting Started banner on Imports | ✅ Done |
+| CSV template download link | ✅ Done |
+| Helper note under uploader | ✅ Done |
+| Dashboard reads uploaded data | ✅ Done |
+| Metrics compute from active data | ✅ Done |
 
-### 1. "Getting Started" Banner (3-step onboarding)
-**Location**: Could go on Dashboard or Imports page
-**Design**:
-- Step 1: "Upload inventory CSV"
-- Step 2: "Review your data"
-- Step 3: "View recommendations"
-- Should show current progress and link to next step
+---
 
-### 2. CSV Template Download Link on Imports Page
-**Task**: Add a "Download template" link on the Imports page pointing to:
-`/templates/inventorypilot-template-inventory-snapshot.csv`
+## Next Steps (Day 5: UI Polish)
 
-**Suggested placement**: Above the upload dropzone or in a helper text area
+Per timeline, Day 5 focuses on **loading/empty/error states**:
 
-### 3. Landing Page Integration
-**Status**: Landing page components exist but need verification they're integrated into `page.tsx`
-**Check**: `frontend/web/src/app/page.tsx`
+### Dashboard
+- [ ] Loading spinner while reading localStorage
+- [ ] Empty state if no products
+- [ ] Error state if data is malformed
+
+### Imports
+- [ ] Loading state while parsing CSV (already has basic handling)
+- [ ] Polish existing error states
 
 ---
 
@@ -123,9 +150,11 @@ Muted:      #94A3B8 (Gray)
 | File | Purpose |
 |------|---------|
 | `CLAUDE.md` | Project spec, build order, data models |
+| `frontend/web/src/app/page.tsx` | Landing page |
 | `frontend/web/src/app/imports/page.tsx` | Imports page |
 | `frontend/web/src/app/(dashboard)/dashboard/page.tsx` | Dashboard page |
 | `frontend/web/public/templates/inventorypilot-template-inventory-snapshot.csv` | CSV template |
+| `frontend/web/src/components/landing/` | Landing page components (Navbar, Footer, Hero, Features, CTA) |
 
 ---
 
@@ -141,30 +170,33 @@ Muted:      #94A3B8 (Gray)
 
 5. **Three separate CSV templates**: Simplified to single "inventory snapshot" template for MVP since we only need one upload flow.
 
+6. **Scope creep on landing page**: Initially planned full ResuMax-style page with pricing/FAQ/testimonials. Scaled back to Hero + How It Works for Phase 0.
+
 ---
 
-## Next Steps After Step 1
+## Timeline Reference
 
-**Step 2: Minimal FastAPI Backend**
-- `/healthz`, `/readyz`
-- `/api/v1/dashboard/summary`
-- `/api/v1/recommendations`
-- `POST /api/v1/imports/upload` with column validation
-
-**Step 3: Docker Compose Local**
-- frontend + backend + postgres containers
-- `docker-compose up` should work
+| Day | Task | Status |
+|-----|------|--------|
+| Day 1 | Dashboard route + filter/search | ✅ Done |
+| Day 2 | Imports UI: upload CSV → preview | ✅ Done |
+| Day 3 | CSV templates + Getting Started banner | ✅ Done |
+| Day 4 | LocalStorage pipeline (imports → dashboard) | ✅ Done |
+| Day 5 | UI polish for demo states | ⏳ Next |
+| Day 6 | FastAPI skeleton + /healthz /readyz | Pending |
 
 ---
 
 ## How to Test Current State
 
 1. Start dev server: `cd frontend/web && npm run dev`
-2. Go to `http://localhost:3000/imports`
-3. Upload the template CSV or any CSV with columns: sku, name, category, available, unit_cost
-4. Verify "Saved at ..." appears
-5. Click "Go to Dashboard"
-6. Verify "Data source: Uploaded CSV" shows
-7. Verify table shows your uploaded data
-8. Verify metrics update based on your data
-9. Test search and category filter
+2. Go to `http://localhost:3000` — verify landing page loads with Hero + How It Works
+3. Click "Upload CSV" — should navigate to `/imports`
+4. Download template from "Download templates" section
+5. Upload the template CSV or any CSV with columns: sku, name, category, available, unit_cost
+6. Verify "Saved at ..." appears
+7. Click "Go to Dashboard"
+8. Verify "Data source: Uploaded CSV" shows
+9. Verify table shows your uploaded data
+10. Verify metrics update based on your data
+11. Test search and category filter
