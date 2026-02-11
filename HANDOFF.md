@@ -153,18 +153,60 @@ Unchanged. Headers: `sku,name,category,available,unit_cost`
 
 ---
 
+## Backend (Step 2 — Complete, in `hungry-mclaren` worktree)
+
+Full FastAPI backend built in the `hungry-mclaren` worktree (uncommitted, needs merge):
+
+### FastAPI App (`backend/app/`)
+- **`main.py`** — App entrypoint, CORS middleware, versioned router
+- **`config.py`** — Environment config (`CORS_ORIGINS`, `API_V1_PREFIX`)
+
+### API Routes (`backend/app/api/v1/`)
+| File | Endpoints |
+|------|-----------|
+| `health.py` | `GET /healthz`, `GET /readyz` |
+| `dashboard.py` | `GET /api/v1/dashboard/summary` (metrics + products) |
+| `products.py` | `GET /api/v1/products` (sort, limit), `GET /api/v1/products/{id}` |
+| `recommendations.py` | `GET /api/v1/recommendations` (at_risk filter), `GET /{id}` |
+| `imports.py` | `POST /api/v1/imports/upload` (CSV validation + preview) |
+| `forecasts.py` | `POST /trigger` (stub), `GET /runs/latest` (stub) |
+| `router.py` | Aggregates all route modules |
+
+### Schemas (`backend/app/schemas/`)
+- Pydantic v2 models with camelCase aliases for all endpoints
+- `health.py`, `dashboard.py`, `product.py`, `recommendation.py`, `imports.py`, `forecast.py`
+
+### Services (`backend/app/services/`)
+- **`seed_data.py`** — In-memory seed data matching frontend mock data, `store_uploaded_rows()` for uploaded CSVs
+- **`csv_validator.py`** — Auto-detects CSV type (inventory_snapshot vs sales_history), per-field validators, accepted/rejected row tracking
+
+### Frontend API Client (`frontend/web/src/lib/`)
+- **`types.ts`** — Shared TypeScript types (Product, DashboardMetrics, Recommendation, etc.)
+- **`api.ts`** — Typed API client (`apiGet`, `apiPost`, `apiPostFile`), 10s timeout, `ApiResult<T>` discriminated union
+
+### Dashboard Updates (in hungry-mclaren)
+- 3-tier data source: API first → localStorage fallback → mock data
+- `isLoading` / `apiError` states with `useEffect` for API fetch
+- Dismissible API error banner
+- Empty state when no products from any source
+
+### Dependencies
+- `backend/requirements.txt`: fastapi, uvicorn, pydantic, python-multipart, python-dotenv
+- `backend/.env.example`: documented env vars
+
+**Status**: Fully functional but uncommitted in `hungry-mclaren`. Needs to be merged into `feature/josh` → `main`.
+
+---
+
 ## Next Steps
 
-### Immediate (Day 5 remaining)
-- [ ] Dashboard: loading spinner while reading localStorage
-- [ ] Dashboard: empty state if no products
-- [ ] Dashboard: error state if data is malformed
+### Immediate — Merge backend
+- [ ] Commit and merge `hungry-mclaren` backend work into `feature/josh` → `main`
 
-### Day 6: FastAPI Backend (Step 2)
-- [ ] FastAPI skeleton with `/healthz`, `/readyz`
-- [ ] `GET /api/v1/dashboard/summary`
-- [ ] `POST /api/v1/imports/upload` with column validation
-- [ ] Seed data for demo
+### Step 3: Docker Compose Local (Phase 0 final)
+- [ ] `docker-compose.yml` with frontend + backend + postgres
+- [ ] `Dockerfile` for backend
+- [ ] Verify `docker-compose up` works end-to-end
 
 ### Cleanup
 - [ ] Delete unused `frontend/web/src/components/landing/` directory (Navbar, Hero, Features, CTA, Footer — no longer imported)
@@ -202,6 +244,12 @@ Key: `inventorypilot:uploadedRows`
 | `frontend/web/src/app/imports/page.tsx` | Imports page (glass stepper, dropzone, preview) |
 | `frontend/web/src/app/(dashboard)/dashboard/page.tsx` | Dashboard page |
 | `frontend/web/public/templates/inventorypilot-template-inventory-snapshot.csv` | CSV template |
+| `backend/app/main.py` | FastAPI entrypoint (in hungry-mclaren) |
+| `backend/app/api/v1/` | All API route modules (in hungry-mclaren) |
+| `backend/app/services/seed_data.py` | In-memory seed data (in hungry-mclaren) |
+| `backend/app/services/csv_validator.py` | CSV validation service (in hungry-mclaren) |
+| `frontend/web/src/lib/api.ts` | Frontend API client (in hungry-mclaren) |
+| `frontend/web/src/lib/types.ts` | Shared TypeScript types (in hungry-mclaren) |
 
 ---
 
@@ -227,6 +275,7 @@ Key: `inventorypilot:uploadedRows`
 
 ## How to Test
 
+### Frontend only
 1. Start dev server: `cd frontend/web && npm run dev`
 2. Go to `http://localhost:3000` — verify ForeStock.ai landing page with hero, dashboard preview, integrations row, FAQ accordion, footer
 3. Scroll down — sections should fade in (scroll-reveal animation)
@@ -240,6 +289,14 @@ Key: `inventorypilot:uploadedRows`
 11. Test search and category filter
 12. Check keyboard navigation (Tab through interactive elements, verify focus rings)
 
+### Backend (from hungry-mclaren worktree)
+1. `cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+2. `uvicorn app.main:app --reload --port 8000`
+3. `curl http://localhost:8000/healthz` → `{"status":"healthy"}`
+4. `curl http://localhost:8000/readyz` → `{"status":"ready","database":"not_connected"}`
+5. `curl http://localhost:8000/api/v1/dashboard/summary` → metrics + products JSON
+6. `curl -F "file=@template.csv" http://localhost:8000/api/v1/imports/upload` → accepted/rejected rows
+
 ---
 
 ## Timeline Reference
@@ -251,5 +308,6 @@ Key: `inventorypilot:uploadedRows`
 | Day 3 | CSV templates + Getting Started banner | ✅ Done |
 | Day 4 | LocalStorage pipeline (imports → dashboard) | ✅ Done |
 | Day 5 | UI rebrand to ForeStock.ai + glass design | ✅ Done |
-| Day 5b | Loading/empty/error states | ⏳ Next |
-| Day 6 | FastAPI skeleton + /healthz /readyz | Pending |
+| Day 6 | FastAPI backend + all API endpoints + seed data | ✅ Done (in hungry-mclaren, needs merge) |
+| Day 6 | Frontend API client + dashboard API integration | ✅ Done (in hungry-mclaren, needs merge) |
+| Next | Docker Compose (Step 3) | ⏳ Next |
