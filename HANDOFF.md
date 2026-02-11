@@ -155,7 +155,7 @@ Unchanged. Headers: `sku,name,category,available,unit_cost`
 
 ## Backend (Step 2 — Complete, in `hungry-mclaren` worktree)
 
-Full FastAPI backend built in the `hungry-mclaren` worktree (uncommitted, needs merge):
+Full FastAPI backend (merged from `hungry-mclaren` worktree):
 
 ### FastAPI App (`backend/app/`)
 - **`main.py`** — App entrypoint, CORS middleware, versioned router
@@ -184,7 +184,7 @@ Full FastAPI backend built in the `hungry-mclaren` worktree (uncommitted, needs 
 - **`types.ts`** — Shared TypeScript types (Product, DashboardMetrics, Recommendation, etc.)
 - **`api.ts`** — Typed API client (`apiGet`, `apiPost`, `apiPostFile`), 10s timeout, `ApiResult<T>` discriminated union
 
-### Dashboard Updates (in hungry-mclaren)
+### Dashboard Updates (merged)
 - 3-tier data source: API first → localStorage fallback → mock data
 - `isLoading` / `apiError` states with `useEffect` for API fetch
 - Dismissible API error banner
@@ -194,14 +194,11 @@ Full FastAPI backend built in the `hungry-mclaren` worktree (uncommitted, needs 
 - `backend/requirements.txt`: fastapi, uvicorn, pydantic, python-multipart, python-dotenv
 - `backend/.env.example`: documented env vars
 
-**Status**: Fully functional but uncommitted in `hungry-mclaren`. Needs to be merged into `feature/josh` → `main`.
+**Status**: Merged into `main`.
 
 ---
 
 ## Next Steps
-
-### Immediate — Merge backend
-- [ ] Commit and merge `hungry-mclaren` backend work into `feature/josh` → `main`
 
 ### Step 3: Docker Compose Local (Phase 0 final)
 - [ ] `docker-compose.yml` with frontend + backend + postgres
@@ -244,12 +241,12 @@ Key: `inventorypilot:uploadedRows`
 | `frontend/web/src/app/imports/page.tsx` | Imports page (glass stepper, dropzone, preview) |
 | `frontend/web/src/app/(dashboard)/dashboard/page.tsx` | Dashboard page |
 | `frontend/web/public/templates/inventorypilot-template-inventory-snapshot.csv` | CSV template |
-| `backend/app/main.py` | FastAPI entrypoint (in hungry-mclaren) |
-| `backend/app/api/v1/` | All API route modules (in hungry-mclaren) |
-| `backend/app/services/seed_data.py` | In-memory seed data (in hungry-mclaren) |
-| `backend/app/services/csv_validator.py` | CSV validation service (in hungry-mclaren) |
-| `frontend/web/src/lib/api.ts` | Frontend API client (in hungry-mclaren) |
-| `frontend/web/src/lib/types.ts` | Shared TypeScript types (in hungry-mclaren) |
+| `backend/app/main.py` | FastAPI entrypoint (merged) |
+| `backend/app/api/v1/` | All API route modules (merged) |
+| `backend/app/services/seed_data.py` | In-memory seed data (merged) |
+| `backend/app/services/csv_validator.py` | CSV validation service (merged) |
+| `frontend/web/src/lib/api.ts` | Frontend API client (merged) |
+| `frontend/web/src/lib/types.ts` | Shared TypeScript types (merged) |
 
 ---
 
@@ -308,6 +305,6 @@ Key: `inventorypilot:uploadedRows`
 | Day 3 | CSV templates + Getting Started banner | ✅ Done |
 | Day 4 | LocalStorage pipeline (imports → dashboard) | ✅ Done |
 | Day 5 | UI rebrand to ForeStock.ai + glass design | ✅ Done |
-| Day 6 | FastAPI backend + all API endpoints + seed data | ✅ Done (in hungry-mclaren, needs merge) |
-| Day 6 | Frontend API client + dashboard API integration | ✅ Done (in hungry-mclaren, needs merge) |
+| Day 6 | FastAPI backend + all API endpoints + seed data | ✅ Done (merged) |
+| Day 6 | Frontend API client + dashboard API integration | ✅ Done (merged) |
 | Next | Docker Compose (Step 3) | ⏳ Next |
