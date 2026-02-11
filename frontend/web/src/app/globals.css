@@ -1,38 +1,186 @@
 @import "tailwindcss";
 
+/*
+ * ForeStock.ai Design System
+ * ──────────────────────────
+ * Palette derived from brand reference (dark + teal/cyan):
+ *   --bg:          #0B0F1A   deep charcoal-navy
+ *   --surface:     #141922   card / panel base
+ *   --surface2:    #1C2333   elevated surface
+ *   --border:      #2A3040   subtle dividers
+ *   --text:        #E8ECF1   primary text
+ *   --muted:       #7B8BA3   secondary / helper text
+ *   --accent:      #2DD4BF   teal / brand accent
+ *   --accentHover: #14B8A6   teal hover
+ *   --focus:       #2DD4BF   focus ring colour
+ */
+
 :root {
-  --background: #0a1628;
-  --foreground: #f8fafc;
-  --brand-blue: #3b82f6;
-  --brand-cyan: #06b6d4;
+  /* Core palette */
+  --bg: #0B0F1A;
+  --surface: #141922;
+  --surface2: #1C2333;
+  --border: #2A3040;
+  --text: #E8ECF1;
+  --muted: #7B8BA3;
+  --accent: #2DD4BF;
+  --accentHover: #14B8A6;
+  --focus: #2DD4BF;
+
+  /* Semantic aliases (kept for backward compat with dashboard) */
+  --background: #0B0F1A;
+  --foreground: #E8ECF1;
+  --brand-blue: #3B82F6;
+  --brand-cyan: #2DD4BF;
   --brand-purple: #8b5cf6;
   --brand-yellow: #f59e0b;
   --brand-green: #10b981;
   --brand-red: #ef4444;
-  --surface-1: #0f172a;
-  --surface-2: #1e293b;
-  --surface-3: #334155;
-  --text-muted: #94a3b8;
-  --text-subtle: #64748b;
-  --border: #334155;
+  --surface-1: #0E1320;
+  --surface-2: #141922;
+  --surface-3: #2A3040;
+  --text-muted: #7B8BA3;
+  --text-subtle: #556177;
+  --glass-bg: rgba(20, 25, 34, 0.55);
+  --glass-border: rgba(42, 48, 64, 0.6);
+
+  /* Spacing / radius tokens */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-btn: 14px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a1628;
-    --foreground: #f8fafc;
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ──────────────────────────
+   Glass card utility
+   ────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-radius: var(--radius-md);
+}
+
+/* Fallback when backdrop-filter is unsupported */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass {
+    background: var(--surface);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+/* ──────────────────────────
+   Focus-visible utility
+   ────────────────────────── */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-btn);
+}
+
+/* ──────────────────────────
+   Scroll-reveal animation
+   ────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .reveal.visible {
+    transition: none;
+  }
+}
+
+/* ──────────────────────────
+   Subtle glow on accent buttons
+   ────────────────────────── */
+.btn-accent {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+  border-radius: var(--radius-btn);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.btn-accent:hover {
+  background: var(--accentHover);
+  box-shadow: 0 0 20px rgba(45, 212, 191, 0.25);
+}
+
+.btn-accent:active {
+  transform: scale(0.98);
+}
+
+.btn-accent:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Secondary / outline button */
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  border-radius: var(--radius-btn);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--muted);
+  color: #fff;
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ──────────────────────────
+   Scrollbar styling (subtle)
+   ────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }

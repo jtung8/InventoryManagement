@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import SiteHeader from "@/components/ui/SiteHeader";
 
 // Shape of localStorage payload from imports page
 interface UploadedData {
@@ -229,27 +230,24 @@ export default function DashboardPage() {
   }, [searchQuery, categoryFilter, activeProducts]);
 
   return (
-    <div className="min-h-screen bg-[#0A1628] text-[#F8FAFC] p-8">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+      <SiteHeader ctaLabel="Import CSV" ctaHref="/imports" />
+
+      <div className="mx-auto max-w-6xl px-6 py-8">
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-[#94A3B8]">
+        <h1 className="text-2xl font-bold tracking-tight mb-1">Dashboard</h1>
+        <p className="text-sm text-[var(--muted)]">
           Inventory health and cashflow at a glance
         </p>
-        <p className="text-xs text-[#64748B] mt-1">
-          Data source: {hasUploadedData ? "Uploaded CSV" : "Mock data"}
-        </p>
         <div className="flex items-center gap-3 mt-2">
-          <Link
-            href="/imports"
-            className="text-xs text-[#64748B] hover:text-[#94A3B8] transition-colors"
-          >
-            Back to Imports
-          </Link>
+          <span className="text-xs text-[var(--muted)]">
+            Data source: {hasUploadedData ? "Uploaded CSV" : "Demo data"}
+          </span>
           {hasUploadedData && (
             <Link
               href="/imports"
-              className="text-xs text-[#06B6D4] hover:text-[#22D3EE] transition-colors"
+              className="text-xs text-[var(--accent)] hover:text-[var(--accentHover)] transition-colors"
             >
               Change CSV
             </Link>
@@ -257,8 +255,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Metrics Cards - Cashflow Focused */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard
           title="Total SKUs"
           value={metrics.totalSkus.toLocaleString()}
@@ -295,13 +293,13 @@ export default function DashboardPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by SKU or name..."
-          className="w-full sm:max-w-md rounded-lg bg-[#1E293B] border border-[#334155] px-4 py-2 text-sm text-[#F8FAFC] placeholder-[#64748B] outline-none focus:border-[#06B6D4] transition-colors"
+          className="w-full sm:max-w-md rounded-[var(--radius-btn)] bg-[var(--surface)] border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] outline-none focus:border-[var(--accent)] transition-colors"
         />
 
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="w-full sm:w-48 rounded-lg bg-[#1E293B] border border-[#334155] px-4 py-2 text-sm text-[#F8FAFC] outline-none focus:border-[#06B6D4] transition-colors"
+          className="w-full sm:w-48 rounded-[var(--radius-btn)] bg-[var(--surface)] border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] transition-colors"
         >
           {categories.map((cat) => (
             <option key={cat} value={cat}>
@@ -312,58 +310,58 @@ export default function DashboardPage() {
       </div>
 
       {/* At-Risk Products Table */}
-      <div className="bg-[#1E293B] rounded-xl p-6 shadow-lg">
+      <div className="glass p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold">At-Risk Products</h2>
-          <span className="text-sm text-[#94A3B8]">
-            {filteredProducts.length} products match your filters
+          <h2 className="text-lg font-semibold">At-Risk Products</h2>
+          <span className="text-sm text-[var(--muted)]">
+            {filteredProducts.length} products
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#334155] text-left text-[#94A3B8] text-sm">
-                <th className="pb-4 font-medium">SKU</th>
-                <th className="pb-4 font-medium">Product Name</th>
-                <th className="pb-4 font-medium">Category</th>
-                <th className="pb-4 font-medium text-right">Available</th>
-                <th className="pb-4 font-medium text-right">Stockout</th>
-                <th className="pb-4 font-medium text-right">Lead Time</th>
-                <th className="pb-4 font-medium text-right">Reorder Qty</th>
-                <th className="pb-4 font-medium text-right">Reorder Cost</th>
+              <tr className="border-b border-[var(--border)] text-left text-[var(--muted)]">
+                <th className="pb-3 font-medium">SKU</th>
+                <th className="pb-3 font-medium">Product Name</th>
+                <th className="pb-3 font-medium">Category</th>
+                <th className="pb-3 font-medium text-right">Available</th>
+                <th className="pb-3 font-medium text-right">Stockout</th>
+                <th className="pb-3 font-medium text-right">Lead Time</th>
+                <th className="pb-3 font-medium text-right">Reorder Qty</th>
+                <th className="pb-3 font-medium text-right">Reorder Cost</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.map((product) => (
                 <tr
                   key={product.id}
-                  className="border-b border-[#334155] hover:bg-[#334155]/50 transition-colors"
+                  className="border-b border-[var(--border)] hover:bg-[var(--surface2)]/50 transition-colors"
                 >
-                  <td className="py-4 font-mono text-[#06B6D4]">{product.sku}</td>
-                  <td className="py-4">{product.name}</td>
-                  <td className="py-4 text-[#94A3B8]">{product.category}</td>
-                  <td className="py-4 text-right">{product.available}</td>
-                  <td className="py-4 text-right">
+                  <td className="py-3 font-mono text-[var(--accent)]">{product.sku}</td>
+                  <td className="py-3">{product.name}</td>
+                  <td className="py-3 text-[var(--muted)]">{product.category}</td>
+                  <td className="py-3 text-right">{product.available}</td>
+                  <td className="py-3 text-right">
                     <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         product.daysUntilStockout <= 2
-                          ? "bg-[#EF4444]/20 text-[#EF4444]"
+                          ? "bg-[var(--brand-red)]/15 text-[var(--brand-red)]"
                           : product.daysUntilStockout <= 4
-                          ? "bg-[#F59E0B]/20 text-[#F59E0B]"
-                          : "bg-[#10B981]/20 text-[#10B981]"
+                          ? "bg-[var(--brand-yellow)]/15 text-[var(--brand-yellow)]"
+                          : "bg-[var(--brand-green)]/15 text-[var(--brand-green)]"
                       }`}
                     >
                       {product.daysUntilStockout}d
                     </span>
                   </td>
-                  <td className="py-4 text-right text-[#94A3B8]">
+                  <td className="py-3 text-right text-[var(--muted)]">
                     {product.leadTimeDays}d
                   </td>
-                  <td className="py-4 text-right font-semibold">
+                  <td className="py-3 text-right font-semibold">
                     {product.recommendedQty}
                   </td>
-                  <td className="py-4 text-right font-semibold text-[#3B82F6]">
+                  <td className="py-3 text-right font-semibold text-[var(--accent)]">
                     $
                     {(product.recommendedQty * product.unitCost).toLocaleString(
                       "en-US",
@@ -381,10 +379,11 @@ export default function DashboardPage() {
 
         {/* Empty state */}
         {filteredProducts.length === 0 && (
-          <p className="mt-4 text-center text-sm text-[#94A3B8]">
+          <p className="mt-4 text-center text-sm text-[var(--muted)]">
             No products match your search or filter.
           </p>
         )}
+      </div>
       </div>
     </div>
   );
@@ -403,16 +402,16 @@ function MetricCard({
   variant?: "default" | "warning";
 }) {
   return (
-    <div className="bg-[#1E293B] rounded-xl p-6 shadow-lg">
-      <p className="text-[#94A3B8] text-sm mb-1">{title}</p>
+    <div className="glass p-5">
+      <p className="text-[var(--muted)] text-xs mb-1">{title}</p>
       <p
-        className={`text-3xl font-bold mb-1 ${
-          variant === "warning" ? "text-[#F59E0B]" : "text-[#F8FAFC]"
+        className={`text-2xl font-bold mb-1 ${
+          variant === "warning" ? "text-[var(--brand-yellow)]" : "text-[var(--text)]"
         }`}
       >
         {value}
       </p>
-      <p className="text-[#64748B] text-sm">{subtitle}</p>
+      <p className="text-[var(--muted)] text-xs">{subtitle}</p>
     </div>
   );
 }
