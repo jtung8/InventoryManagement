@@ -1,8 +1,10 @@
 # Handoff Document — ForeStock.ai MVP
 
 > **Last updated**: 2026-02-10
-> **Current phase**: Phase 0 — Local Demo (Step 1 complete + UI rebrand complete)
-> **Brand**: Rebranded from "InventoryPilot" to **ForeStock.ai**
+> **Current phase**: Phase 0 — Local Demo (Steps 1–2 complete, Step 3 Docker Compose next)
+> **Brand**: ForeStock.ai (rebranded from InventoryPilot)
+> **Days 1–6**: All complete. Frontend (landing, imports, dashboard) + Backend (FastAPI + all API endpoints) + UI rebrand done.
+> **Next**: Step 3 — Docker Compose (`docker-compose.yml` with frontend + backend + postgres)
 
 ---
 
