@@ -1,10 +1,10 @@
 # Handoff Document — ForeStock.ai MVP
 
-> **Last updated**: 2026-02-10
-> **Current phase**: Phase 0 — Local Demo (Steps 1–2 complete, Step 3 Docker Compose next)
+> **Last updated**: 2026-03-12
+> **Current phase**: Phase 0 — Local Demo (COMPLETE. Steps 1–3 all done.)
 > **Brand**: ForeStock.ai (rebranded from InventoryPilot)
-> **Days 1–6**: All complete. Frontend (landing, imports, dashboard) + Backend (FastAPI + all API endpoints) + UI rebrand done.
-> **Next**: Step 3 — Docker Compose (`docker-compose.yml` with frontend + backend + postgres)
+> **Days 1–7**: All complete. Frontend + Backend + UI rebrand + Docker Compose done.
+> **Next**: Phase 1, Step 4 — GitHub Actions CI/CD
 
 ---
 
@@ -117,6 +117,39 @@ Minimal changes — added SiteHeader, updated colors to CSS variables:
 
 Unchanged. Headers: `sku,name,category,available,unit_cost`
 
+### Docker Compose (Step 3 — Complete)
+
+Full containerization for local development:
+
+**Backend Dockerfile** (`backend/Dockerfile`):
+- 2-stage build: `python:3.12-slim` builder → runtime
+- Virtual env isolation, non-root `appuser`, `PYTHONUNBUFFERED=1`
+- Runs: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+
+**Frontend Dockerfile** (`frontend/web/Dockerfile`):
+- 3-stage build: deps (npm ci) → builder (next build) → runner (standalone server)
+- `node:20-alpine` base, non-root `nextjs` user
+- `NEXT_PUBLIC_API_URL` passed as build ARG (baked into JS at build time)
+- Copies `public/` and `.next/static/` manually (standalone doesn't include them)
+
+**Docker Compose** (`docker-compose.yml`):
+- 3 services: `postgres` (15-alpine), `backend`, `frontend`
+- Postgres: named volume `pgdata`, healthcheck with `pg_isready`
+- Backend: waits for postgres healthy, CORS + DATABASE_URL env vars
+- Frontend: build arg `NEXT_PUBLIC_API_URL=http://localhost:8000`
+- Ports: 3000 (frontend), 8000 (backend), 5432 (postgres)
+
+**Makefile**: `make dev`, `make stop`, `make build`, `make clean`, `make logs`
+
+**Config change** (`frontend/web/next.config.ts`):
+- Added `output: "standalone"` for Docker-compatible builds
+
+**.dockerignore files**: `backend/.dockerignore` and `frontend/web/.dockerignore`
+
+**Networking**: Browser hits `localhost:3000` (frontend) and `localhost:8000` (backend API). Backend reaches postgres at `postgres:5432` (Docker internal DNS). Frontend API calls happen in the browser, not server-side.
+
+**Not yet verified**: `docker compose up --build` end-to-end (Docker Desktop was not running during implementation).
+
 ---
 
 ## What Works
@@ -131,6 +164,7 @@ Unchanged. Headers: `sku,name,category,available,unit_cost`
 8. **Drag-and-drop**: Imports page supports drag-and-drop with visual feedback
 9. **Accessibility**: focus-visible states on all interactive elements, keyboard nav, ARIA attributes
 10. **Template download**: Available from imports page
+11. **Docker Compose**: `docker compose up --build` starts frontend + backend + postgres (pending verification)
 
 ---
 
@@ -152,6 +186,12 @@ Unchanged. Headers: `sku,name,category,available,unit_cost`
 | **Dashboard branding update** | ✅ Done |
 | **Scroll-reveal animation** | ✅ Done |
 | **Font switch to Inter** | ✅ Done |
+| **Backend Dockerfile (2-stage build)** | ✅ Done |
+| **Frontend Dockerfile (3-stage standalone)** | ✅ Done |
+| **docker-compose.yml (3 services)** | ✅ Done |
+| **Makefile (dev commands)** | ✅ Done |
+| **next.config.ts standalone output** | ✅ Done |
+| **.dockerignore files (backend + frontend)** | ✅ Done |
 
 ---
 
@@ -202,10 +242,16 @@ Full FastAPI backend (merged from `hungry-mclaren` worktree):
 
 ## Next Steps
 
-### Step 3: Docker Compose Local (Phase 0 final)
-- [ ] `docker-compose.yml` with frontend + backend + postgres
-- [ ] `Dockerfile` for backend
-- [ ] Verify `docker-compose up` works end-to-end
+### Verify Docker Compose (before moving to Phase 1)
+- [ ] Open Docker Desktop and run `make dev` (or `docker compose up --build`)
+- [ ] Verify `http://localhost:8000/healthz` returns `{"status":"healthy"}`
+- [ ] Verify `http://localhost:3000` loads the ForeStock.ai landing page
+- [ ] Test full flow: landing → imports → upload CSV → dashboard
+
+### Phase 1, Step 4: GitHub Actions CI/CD
+- [ ] PR workflow: lint (ESLint + Ruff), type-check, build Docker images
+- [ ] Main workflow: build → push to ECR → deploy to ECS
+- [ ] Uses OIDC → AWS IAM role (no long-lived keys)
 
 ### Cleanup
 - [ ] Delete unused `frontend/web/src/components/landing/` directory (Navbar, Hero, Features, CTA, Footer — no longer imported)
@@ -249,6 +295,12 @@ Key: `inventorypilot:uploadedRows`
 | `backend/app/services/csv_validator.py` | CSV validation service (merged) |
 | `frontend/web/src/lib/api.ts` | Frontend API client (merged) |
 | `frontend/web/src/lib/types.ts` | Shared TypeScript types (merged) |
+| `docker-compose.yml` | 3-service orchestration (frontend + backend + postgres) |
+| `Makefile` | Dev commands (`make dev`, `make stop`, `make build`, etc.) |
+| `backend/Dockerfile` | 2-stage Python build (builder → runtime) |
+| `frontend/web/Dockerfile` | 3-stage Next.js build (deps → builder → runner) |
+| `backend/.dockerignore` | Excludes __pycache__, .venv, .env from Docker builds |
+| `frontend/web/.dockerignore` | Excludes node_modules, .next from Docker builds |
 
 ---
 
@@ -288,13 +340,23 @@ Key: `inventorypilot:uploadedRows`
 11. Test search and category filter
 12. Check keyboard navigation (Tab through interactive elements, verify focus rings)
 
-### Backend (from hungry-mclaren worktree)
+### Backend (standalone)
 1. `cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 2. `uvicorn app.main:app --reload --port 8000`
 3. `curl http://localhost:8000/healthz` → `{"status":"healthy"}`
 4. `curl http://localhost:8000/readyz` → `{"status":"ready","database":"not_connected"}`
 5. `curl http://localhost:8000/api/v1/dashboard/summary` → metrics + products JSON
 6. `curl -F "file=@template.csv" http://localhost:8000/api/v1/imports/upload` → accepted/rejected rows
+
+### Docker Compose (all services)
+1. Open Docker Desktop
+2. `make dev` (or `docker compose up --build`)
+3. Wait for all 3 services to start (first build downloads base images ~400MB)
+4. `curl http://localhost:8000/healthz` → `{"status":"healthy"}`
+5. Browser at `http://localhost:3000` → ForeStock.ai landing page
+6. Navigate: landing → imports → upload CSV → dashboard
+7. `make stop` (or `docker compose down`) to shut down
+8. `make clean` to also delete postgres data volume
 
 ---
 
@@ -309,4 +371,6 @@ Key: `inventorypilot:uploadedRows`
 | Day 5 | UI rebrand to ForeStock.ai + glass design | ✅ Done |
 | Day 6 | FastAPI backend + all API endpoints + seed data | ✅ Done (merged) |
 | Day 6 | Frontend API client + dashboard API integration | ✅ Done (merged) |
-| Next | Docker Compose (Step 3) | ⏳ Next |
+| Day 7 | Docker Compose (Step 3) — Dockerfiles, compose, Makefile | ✅ Done |
+| Next | Verify `docker compose up` end-to-end | ⏳ Pending |
+| Next | Phase 1, Step 4 — GitHub Actions CI/CD | ⏳ Pending |
