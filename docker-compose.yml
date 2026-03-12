@@ -1,0 +1,46 @@
+services:
+  # ---------- Database ----------
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: forestock
+      POSTGRES_PASSWORD: forestock_local
+      POSTGRES_DB: inventorypilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forestock -d inventorypilot"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------- Backend (FastAPI) ----------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      CORS_ORIGINS: "http://localhost:3000"
+      DATABASE_URL: "postgresql://forestock:forestock_local@postgres:5432/inventorypilot"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------- Frontend (Next.js) ----------
+  frontend:
+    build:
+      context: ./frontend/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
