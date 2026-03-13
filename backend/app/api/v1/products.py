@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.product import Product
-from app.services.seed_data import get_products, get_product_by_id
+from app.services.seed_data import get_product_by_id, get_products
 
 router = APIRouter(prefix="/products", tags=["products"])
 

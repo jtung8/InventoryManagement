@@ -1,0 +1,4 @@
+# Development and CI dependencies
+# These are NOT installed in the production Docker image (Dockerfile only uses requirements.txt)
+
+ruff>=0.9.0              # Python linter + formatter (replaces flake8, isort, black)

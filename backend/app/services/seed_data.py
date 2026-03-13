@@ -71,6 +71,7 @@ def _normalize_uploaded_row(row: dict, index: int) -> dict:
         "unit_cost": unit_cost,
     }
 
+
 SEED_PRODUCTS: list[dict] = [
     {
         "id": "1",
@@ -199,25 +200,27 @@ def get_seed_recommendations() -> list[dict]:
         safety_stock = round(avg_weekly_demand * 1.5, 1)
         reorder_point = round(lead_time_demand + safety_stock, 1)
 
-        recs.append({
-            "id": f"rec-{p['id']}",
-            "product_id": p["id"],
-            "sku": p["sku"],
-            "name": p["name"],
-            "avg_weekly_demand": avg_weekly_demand,
-            "lead_time_demand": lead_time_demand,
-            "safety_stock": safety_stock,
-            "reorder_point": reorder_point,
-            "recommended_order_qty": recommended_qty,
-            "days_left": days_until_stockout,
-            "unit_cost": unit_cost,
-            "explanation": {
-                "summary": (
-                    f"{p['name']} has {available} units on hand with "
-                    f"~{days_until_stockout} days until stockout. "
-                    f"Lead time is {lead_time_days} days."
-                ),
-                "method": "placeholder_heuristic",
-            },
-        })
+        recs.append(
+            {
+                "id": f"rec-{p['id']}",
+                "product_id": p["id"],
+                "sku": p["sku"],
+                "name": p["name"],
+                "avg_weekly_demand": avg_weekly_demand,
+                "lead_time_demand": lead_time_demand,
+                "safety_stock": safety_stock,
+                "reorder_point": reorder_point,
+                "recommended_order_qty": recommended_qty,
+                "days_left": days_until_stockout,
+                "unit_cost": unit_cost,
+                "explanation": {
+                    "summary": (
+                        f"{p['name']} has {available} units on hand with "
+                        f"~{days_until_stockout} days until stockout. "
+                        f"Lead time is {lead_time_days} days."
+                    ),
+                    "method": "placeholder_heuristic",
+                },
+            }
+        )
     return recs

@@ -1,0 +1,23 @@
+# Claude Code artifacts
+.claude/worktrees/
+.claude/plans/
+
+# Claude-mem auto-generated context files (not project docs)
+**/CLAUDE.md
+!Claude.md
+
+# Python
+__pycache__/
+*.pyc
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Environment files with secrets
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

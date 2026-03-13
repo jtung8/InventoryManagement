@@ -7,10 +7,7 @@ TODO: Connect POST /trigger to SQS queue (Phase 1, Step 7).
 TODO: Read GET /runs/latest from forecast_runs DB table (Phase 1, Step 7).
 """
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
 from app.schemas.forecast import ForecastRunResponse, ForecastTriggerResponse
 

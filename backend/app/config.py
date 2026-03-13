@@ -2,10 +2,7 @@
 
 import os
 
-
-CORS_ORIGINS: list[str] = os.getenv(
-    "CORS_ORIGINS", "http://localhost:3000"
-).split(",")
+CORS_ORIGINS: list[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 
 API_V1_PREFIX: str = "/api/v1"
 

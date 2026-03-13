@@ -49,6 +49,19 @@ DON'T:
 - Add features not in the current phase
 ```
 
+### Session Continuity
+
+**Before starting work, always read `HANDOFF.md`** for:
+- Current progress and phase status
+- What's been built and what works
+- Next steps and pending tasks
+- Lessons learned from previous sessions
+
+**After completing work, update `HANDOFF.md`** with:
+- What was built/changed
+- Any issues encountered
+- Updated next steps
+
 ---
 
 ## 1. Scope Guardrails

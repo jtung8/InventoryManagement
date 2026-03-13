@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import csv
 import io
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 # ---------------------------------------------------------------------------
@@ -44,6 +44,7 @@ class ValidationResult:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _normalize_header(h: str) -> str:
     """Lowercase and strip whitespace from a header."""
@@ -78,6 +79,7 @@ def _detect_csv_type(
 # ---------------------------------------------------------------------------
 # Field validators
 # ---------------------------------------------------------------------------
+
 
 def _validate_non_negative_int(value: str, field_name: str) -> list[str]:
     """Validate that value is a non-negative integer."""
@@ -144,7 +146,9 @@ def _validate_iso_datetime(value: str, field_name: str) -> list[str]:
     try:
         datetime.fromisoformat(stripped.replace("Z", "+00:00"))
     except ValueError:
-        errors.append(f"{field_name} must be a valid ISO 8601 datetime, got '{stripped}'")
+        errors.append(
+            f"{field_name} must be a valid ISO 8601 datetime, got '{stripped}'"
+        )
     return errors
 
 
@@ -154,20 +158,27 @@ _VALIDATORS: dict[tuple[str, str], callable] = {
     ("inventory_snapshot", "sku"): lambda v: _validate_non_empty(v, "sku"),
     ("inventory_snapshot", "name"): lambda v: _validate_non_empty(v, "name"),
     ("inventory_snapshot", "category"): lambda v: _validate_non_empty(v, "category"),
-    ("inventory_snapshot", "available"): lambda v: _validate_non_negative_int(v, "available"),
-    ("inventory_snapshot", "unit_cost"): lambda v: _validate_non_negative_float(v, "unit_cost"),
+    ("inventory_snapshot", "available"): lambda v: _validate_non_negative_int(
+        v, "available"
+    ),
+    ("inventory_snapshot", "unit_cost"): lambda v: _validate_non_negative_float(
+        v, "unit_cost"
+    ),
     # Sales history
     ("sales_history", "order_id"): lambda v: _validate_non_empty(v, "order_id"),
     ("sales_history", "order_date"): lambda v: _validate_iso_datetime(v, "order_date"),
     ("sales_history", "sku"): lambda v: _validate_non_empty(v, "sku"),
     ("sales_history", "quantity"): lambda v: _validate_positive_int(v, "quantity"),
-    ("sales_history", "unit_price"): lambda v: _validate_non_negative_float(v, "unit_price"),
+    ("sales_history", "unit_price"): lambda v: _validate_non_negative_float(
+        v, "unit_price"
+    ),
 }
 
 
 # ---------------------------------------------------------------------------
 # Main validation function
 # ---------------------------------------------------------------------------
+
 
 def validate_csv(content: str) -> ValidationResult:
     """Parse and validate CSV content.
@@ -189,7 +200,7 @@ def validate_csv(content: str) -> ValidationResult:
     warnings: list[str] = []
 
     # Report header trimming
-    for raw, norm in zip(raw_headers, normalized_headers):
+    for raw, norm in zip(raw_headers, normalized_headers, strict=True):
         if raw != norm and raw.strip().lower() == norm:
             warnings.append(
                 f"Column '{raw}' had whitespace/casing differences (normalized to '{norm}')"
@@ -262,11 +273,13 @@ def validate_csv(content: str) -> ValidationResult:
                 row_errors.extend(validator(cell_value))
 
         if row_errors:
-            rejected.append({
-                "row_number": row_idx,
-                "data": row,
-                "errors": row_errors,
-            })
+            rejected.append(
+                {
+                    "row_number": row_idx,
+                    "data": row,
+                    "errors": row_errors,
+                }
+            )
         else:
             accepted.append(row)
 

@@ -51,13 +51,13 @@ async def upload_csv(file: UploadFile) -> ImportResult:
             raise HTTPException(
                 status_code=400,
                 detail="Could not decode file. Please upload a UTF-8 or Latin-1 encoded CSV.",
-            )
+            ) from None
 
     # Validate CSV
     try:
         result = validate_csv(content)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Build response
     rejected = [

@@ -1,0 +1,22 @@
+# Python project configuration
+# Currently used for ruff (linter/formatter) settings
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors (basic style: indentation, whitespace)
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (unused imports, undefined names, dead code)
+    "I",   # isort (import ordering: stdlib → third-party → local)
+    "B",   # flake8-bugbear (common Python bugs and design problems)
+    "UP",  # pyupgrade (suggest modern Python 3.12 syntax)
+]
+ignore = [
+    "E501",  # line-too-long — handled by ruff format (formatter is more lenient with strings)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
