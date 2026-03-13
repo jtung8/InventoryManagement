@@ -137,17 +137,17 @@ function Accordion({
    Mock dashboard preview data
    ────────────────────────────────────────────── */
 const previewMetrics = [
-  { label: "Total SKUs", value: "847", accent: false },
-  { label: "At Risk", value: "6", accent: true },
-  { label: "Reorder Cost", value: "$8,240", accent: false },
-  { label: "Revenue at Risk", value: "$20,600", accent: false },
+  { label: "Total SKUs", value: "156", accent: false },
+  { label: "At Risk", value: "9", accent: true },
+  { label: "Reorder Cost", value: "$3,480", accent: false },
+  { label: "Revenue at Risk", value: "$8,120", accent: false },
 ];
 
 const previewRows = [
-  { sku: "TEE-BLK-M", name: "Essential Cotton Tee", stock: 12, days: "3d", risk: "high" },
-  { sku: "JNS-IND-32", name: "Slim Fit Jeans - Indigo", stock: 8, days: "2d", risk: "high" },
-  { sku: "HDY-GRY-L", name: "Oversized Hoodie", stock: 5, days: "4d", risk: "medium" },
-  { sku: "DRS-FLR-S", name: "Floral Midi Dress", stock: 3, days: "1d", risk: "high" },
+  { sku: "TEE-BLK-M", name: "Essential Cotton Tee", stock: 7, days: "3d", risk: "high" },
+  { sku: "JNS-IND-32", name: "Slim Fit Jeans - Indigo", stock: 4, days: "2d", risk: "high" },
+  { sku: "HDY-GRY-L", name: "Oversized Hoodie", stock: 11, days: "5d", risk: "medium" },
+  { sku: "DRS-FLR-S", name: "Floral Midi Dress", stock: 2, days: "1d", risk: "high" },
 ];
 
 const integrations = [
