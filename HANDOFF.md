@@ -1,16 +1,53 @@
 # Handoff Document — ForeStock.ai MVP
 
 > **Last updated**: 2026-03-12
-> **Current phase**: Phase 0 — Local Demo (COMPLETE. Steps 1–3 all done.)
+> **Current phase**: Phase 1 — Live on AWS (Step 4 COMPLETE)
 > **Brand**: ForeStock.ai (rebranded from InventoryPilot)
-> **Days 1–7**: All complete. Frontend + Backend + UI rebrand + Docker Compose done.
-> **Next**: Phase 1, Step 4 — GitHub Actions CI/CD
+> **Days 1–8**: All complete. Phase 0 done + CI/CD pipeline live.
+> **Next**: Phase 1, Step 5 — ECS Fargate + ALB
 
 ---
 
 ## What's Been Built
 
-### Rebrand & Design System Overhaul (Latest Session)
+### GitHub Actions CI/CD (Latest Session — Step 4)
+
+Unified CI workflow (`.github/workflows/ci.yml`) that validates every PR and push to `main`. Replaces the previous `web-ci.yml` (frontend-only).
+
+**3 parallel jobs:**
+
+| Job | Steps | ~Time |
+|-----|-------|-------|
+| **Frontend** | checkout → setup-node 20 → npm ci → ESLint → tsc --noEmit → next build | ~90s |
+| **Backend** | checkout → setup-python 3.12 → pip install → ruff check → ruff format --check | ~30s |
+| **Docker Build** | checkout → docker build frontend → docker build backend (runs after frontend+backend pass) | ~120s |
+
+**Key features:**
+- `concurrency` block cancels superseded runs (push-push-push only finishes the last one)
+- `permissions: contents: read` (principle of least privilege)
+- npm + pip caching for faster repeat runs
+- Docker job gated behind `needs: [frontend, backend]`
+
+**New files created:**
+- `.github/workflows/ci.yml` — unified CI workflow
+- `backend/requirements-dev.txt` — dev dependencies (ruff), separate from production
+- `backend/pyproject.toml` — ruff config (target py312, line-length 88, E/W/F/I/B/UP rules, E501 ignored)
+- `.gitignore` — root gitignore (worktrees, cache, .env, __pycache__)
+
+**Files modified:**
+- `frontend/web/package.json` — added `"type-check": "tsc --noEmit"` script
+- `backend/app/api/v1/imports.py` — B904 fix (exception chaining: `from None`, `from exc`)
+- `backend/app/services/csv_validator.py` — B905 fix (`zip(..., strict=True)`)
+- 5 other backend files reformatted by `ruff check --fix` and `ruff format`
+
+**Deleted:**
+- `.github/workflows/web-ci.yml` — replaced by unified ci.yml
+
+**Status:** Merged to `main`. CI passes all 3 jobs. ✅
+
+---
+
+### Rebrand & Design System Overhaul
 
 The entire frontend was rebranded to **ForeStock.ai** with a premium soft-SaaS dark aesthetic:
 
@@ -165,6 +202,8 @@ Full containerization for local development:
 9. **Accessibility**: focus-visible states on all interactive elements, keyboard nav, ARIA attributes
 10. **Template download**: Available from imports page
 11. **Docker Compose**: `docker compose up --build` starts frontend + backend + postgres (pending verification)
+12. **CI pipeline**: Every PR validates frontend (lint + type-check + build), backend (ruff lint + format), and Docker image builds
+13. **Backend lint-clean**: All ruff checks pass (E/W/F/I/B/UP rules), all files formatted
 
 ---
 
@@ -192,6 +231,12 @@ Full containerization for local development:
 | **Makefile (dev commands)** | ✅ Done |
 | **next.config.ts standalone output** | ✅ Done |
 | **.dockerignore files (backend + frontend)** | ✅ Done |
+| **GitHub Actions CI workflow (ci.yml)** | ✅ Done |
+| **Backend linting setup (ruff + pyproject.toml)** | ✅ Done |
+| **Frontend type-check script** | ✅ Done |
+| **Backend code lint-clean (ruff check + format)** | ✅ Done |
+| **Root .gitignore** | ✅ Done |
+| **Deleted web-ci.yml (replaced by ci.yml)** | ✅ Done |
 
 ---
 
@@ -242,14 +287,22 @@ Full FastAPI backend (merged from `hungry-mclaren` worktree):
 
 ## Next Steps
 
-### Verify Docker Compose (before moving to Phase 1)
-- [ ] Open Docker Desktop and run `make dev` (or `docker compose up --build`)
-- [ ] Verify `http://localhost:8000/healthz` returns `{"status":"healthy"}`
-- [ ] Verify `http://localhost:3000` loads the ForeStock.ai landing page
-- [ ] Test full flow: landing → imports → upload CSV → dashboard
+### Phase 1, Step 5: ECS Fargate + ALB
+- [ ] Frontend + Backend as ECS Fargate services
+- [ ] Application Load Balancer for routing (`/` → frontend, `/api/*` → backend)
+- [ ] App accessible via public URL
 
-### Phase 1, Step 4: GitHub Actions CI/CD
-- [ ] PR workflow: lint (ESLint + Ruff), type-check, build Docker images
+### Phase 1, Step 6: RDS PostgreSQL
+- [ ] Backend connects to RDS instead of in-memory seed data
+- [ ] Seed data loaded into production database
+
+### Phase 1, Step 7: Async Pipeline (SQS + EventBridge)
+- [ ] SQS queue for forecast jobs (+ DLQ)
+- [ ] EventBridge rule triggers daily
+- [ ] Worker task runs moving average forecast
+- [ ] `forecast_runs` table tracks run status
+
+### Deploy Workflow (ci.yml extension or deploy.yml)
 - [ ] Main workflow: build → push to ECR → deploy to ECS
 - [ ] Uses OIDC → AWS IAM role (no long-lived keys)
 
@@ -301,6 +354,10 @@ Key: `inventorypilot:uploadedRows`
 | `frontend/web/Dockerfile` | 3-stage Next.js build (deps → builder → runner) |
 | `backend/.dockerignore` | Excludes __pycache__, .venv, .env from Docker builds |
 | `frontend/web/.dockerignore` | Excludes node_modules, .next from Docker builds |
+| `.github/workflows/ci.yml` | Unified CI: frontend lint/type-check/build + backend lint/format + Docker builds |
+| `backend/requirements-dev.txt` | Dev-only pip dependencies (ruff) — not in production image |
+| `backend/pyproject.toml` | Ruff linter/formatter configuration |
+| `.gitignore` | Root gitignore (worktrees, cache, .env, __pycache__) |
 
 ---
 
@@ -321,6 +378,14 @@ Key: `inventorypilot:uploadedRows`
 7. **Tailwind v4 theming**: No `tailwind.config.ts` — Tailwind v4 uses `@theme inline` block in `globals.css` for custom theme tokens.
 
 8. **CSS variable approach vs hardcoded hex**: Moving to CSS variables (`var(--accent)`) makes rebrand/theming changes trivial and keeps the codebase consistent.
+
+9. **Separate dev dependencies from production**: `requirements-dev.txt` keeps linting tools (ruff) out of the Docker production image. CI installs both files; Dockerfile only installs `requirements.txt`.
+
+10. **Disable E501 when using ruff format**: The formatter handles line length but intentionally leaves long strings alone (for readability). The E501 lint rule flags those same strings, creating a conflict. The ruff team recommends disabling E501 when using the formatter.
+
+11. **Exception chaining in Python (B904)**: When re-raising inside `except` blocks, use `from exc` (to preserve the original error for debugging) or `from None` (to suppress it when it's not useful to the caller). Without this, Python shows both tracebacks, which can be confusing.
+
+12. **`git add .` hazards**: Always have a root `.gitignore` before running `git add .`. Without one, Claude Code worktrees, `__pycache__`, `.ruff_cache`, and auto-generated files get staged accidentally.
 
 ---
 
@@ -372,5 +437,6 @@ Key: `inventorypilot:uploadedRows`
 | Day 6 | FastAPI backend + all API endpoints + seed data | ✅ Done (merged) |
 | Day 6 | Frontend API client + dashboard API integration | ✅ Done (merged) |
 | Day 7 | Docker Compose (Step 3) — Dockerfiles, compose, Makefile | ✅ Done |
+| Day 8 | GitHub Actions CI/CD (Step 4) — ci.yml, ruff, type-check | ✅ Done (merged) |
+| Next | Phase 1, Step 5 — ECS Fargate + ALB | ⏳ Pending |
 | Next | Verify `docker compose up` end-to-end | ⏳ Pending |
-| Next | Phase 1, Step 4 — GitHub Actions CI/CD | ⏳ Pending |
