@@ -1,10 +1,11 @@
-# Claude Code artifacts
-.claude/worktrees/
-.claude/plans/
+# Claude Code
+.claude/
 
-# Claude-mem auto-generated context files (not project docs)
+# Project docs (keep local, not on GitHub)
+Claude.md
+CLAUDE.md
 **/CLAUDE.md
-!Claude.md
+HANDOFF.md
 
 # Python
 __pycache__/
