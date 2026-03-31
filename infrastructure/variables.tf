@@ -33,3 +33,10 @@ variable "private_subnet_cidrs" {
   description = "CIDR blocks for private subnets (one per AZ, used by RDS)"
   default     = ["10.0.10.0/24", "10.0.11.0/24"]
 }
+
+variable "github_repo" {
+  type        = string
+  description = "GitHub repository (owner/name) allowed to assume the CI/CD IAM role via OIDC"
+  # No default — must be provided at plan/apply time.
+  # Example: "jtung8/forestock"
+}
